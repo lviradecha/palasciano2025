@@ -4,6 +4,7 @@
   "description": "Backend Netlify Functions per Palasciano 2025",
   "dependencies": {
     "mailgun.js": "^9.3.0",
-    "form-data": "^4.0.0"
+    "form-data": "^4.0.0",
+    "qrcode": "^1.5.3"
   }
 }

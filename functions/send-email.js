@@ -1,6 +1,7 @@
 // functions/send-email.js
 const formData = require('form-data');
 const Mailgun = require('mailgun.js');
+const QRCode = require('qrcode');
 
 exports.handler = async (event, context) => {
   // Solo POST
@@ -15,15 +16,35 @@ exports.handler = async (event, context) => {
     
     console.log('🔍 DEBUG - API Key presente:', !!apiKey);
     console.log('🔍 DEBUG - Domain presente:', !!domain);
-    console.log('🔍 DEBUG - API Key inizio:', apiKey ? apiKey.substring(0, 8) + '...' : 'MANCANTE');
-    console.log('🔍 DEBUG - Domain:', domain || 'MANCANTE');
     
     if (!apiKey || !domain) {
       throw new Error('Variabili d\'ambiente MAILGUN_API_KEY o MAILGUN_DOMAIN mancanti');
     }
 
     // Leggi dati dalla richiesta
-    const { recipient, subject, htmlContent, qrCodeDataUrl } = JSON.parse(event.body);
+    const { recipient, subject, htmlContent, qrData } = JSON.parse(event.body);
+
+    // Genera QR Code REALE lato server
+    let qrCodeDataUrl = null;
+    if (qrData) {
+      qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+        errorCorrectionLevel: 'H',
+        type: 'image/png',
+        width: 300,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      console.log('✅ QR Code generato correttamente');
+    }
+
+    // Sostituisci il placeholder nel HTML con il QR Code vero
+    let finalHtml = htmlContent;
+    if (qrCodeDataUrl) {
+      finalHtml = htmlContent.replace(/src="data:image\/png;base64,[^"]*"/, `src="${qrCodeDataUrl}"`);
+    }
 
     // Inizializza Mailgun
     const mailgun = new Mailgun(formData);
@@ -37,20 +58,21 @@ exports.handler = async (event, context) => {
       from: `Palasciano 2025 <noreply@${domain}>`,
       to: recipient,
       subject: subject,
-      html: htmlContent
+      html: finalHtml
     };
 
-    // Se c'è un QR Code, allegalo come immagine
+    // Allega QR Code come file
     if (qrCodeDataUrl) {
-      // Converti base64 a buffer
       const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
       
-      emailData.attachment = {
+      emailData.attachment = [{
         data: buffer,
-        filename: 'qrcode.png',
+        filename: 'QRCode_Palasciano2025.png',
         contentType: 'image/png'
-      };
+      }];
+      
+      console.log('✅ QR Code allegato all\'email');
     }
 
     // Invia email

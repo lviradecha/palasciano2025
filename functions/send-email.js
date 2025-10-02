@@ -9,6 +9,19 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // DEBUG: Verifica che le variabili esistano
+    const apiKey = process.env.MAILGUN_API_KEY;
+    const domain = process.env.MAILGUN_DOMAIN;
+    
+    console.log('🔍 DEBUG - API Key presente:', !!apiKey);
+    console.log('🔍 DEBUG - Domain presente:', !!domain);
+    console.log('🔍 DEBUG - API Key inizio:', apiKey ? apiKey.substring(0, 8) + '...' : 'MANCANTE');
+    console.log('🔍 DEBUG - Domain:', domain || 'MANCANTE');
+    
+    if (!apiKey || !domain) {
+      throw new Error('Variabili d\'ambiente MAILGUN_API_KEY o MAILGUN_DOMAIN mancanti');
+    }
+
     // Leggi dati dalla richiesta
     const { recipient, subject, htmlContent, qrCodeDataUrl } = JSON.parse(event.body);
 
@@ -16,12 +29,12 @@ exports.handler = async (event, context) => {
     const mailgun = new Mailgun(formData);
     const mg = mailgun.client({
       username: 'api',
-      key: process.env.MAILGUN_API_KEY // API Key da variabili ambiente
+      key: apiKey
     });
 
     // Prepara l'email
     const emailData = {
-      from: `Palasciano 2025 <noreply@${process.env.MAILGUN_DOMAIN}>`,
+      from: `Palasciano 2025 <noreply@${domain}>`,
       to: recipient,
       subject: subject,
       html: htmlContent
@@ -41,9 +54,10 @@ exports.handler = async (event, context) => {
     }
 
     // Invia email
-    const response = await mg.messages.create(process.env.MAILGUN_DOMAIN, emailData);
+    console.log('📧 Tentativo invio email a:', recipient);
+    const response = await mg.messages.create(domain, emailData);
 
-    console.log('✅ Email inviata:', response.id);
+    console.log('✅ Email inviata con successo:', response.id);
 
     return {
       statusCode: 200,
@@ -56,6 +70,7 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('❌ Errore invio email:', error);
+    console.error('❌ Stack trace:', error.stack);
     
     return {
       statusCode: 500,

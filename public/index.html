@@ -43,22 +43,29 @@
             };
 
             const generateQR = (data) => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 300;
-                canvas.height = 300;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, 300, 300);
-                const hash = JSON.stringify(data).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-                ctx.fillStyle = 'black';
-                for (let i = 0; i < 21; i++) {
-                    for (let j = 0; j < 21; j++) {
-                        if (((hash + i * 31 + j * 17) % 2) === 0) {
-                            ctx.fillRect(14 + j * 13, 14 + i * 13, 13, 13);
-                        }
-                    }
-                }
-                return canvas.toDataURL();
+                // Crea un elemento temporaneo per QRCode
+                const tempDiv = document.createElement('div');
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+                
+                // Genera QR Code reale
+                const qr = new QRCode(tempDiv, {
+                    text: JSON.stringify(data),
+                    width: 300,
+                    height: 300,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                
+                // Estrai l'immagine
+                const canvas = tempDiv.querySelector('canvas');
+                const dataUrl = canvas.toDataURL('image/png');
+                
+                // Pulisci
+                document.body.removeChild(tempDiv);
+                
+                return dataUrl;
             };
 
             const sendEmail = async (p, type) => {
@@ -116,7 +123,7 @@
                             recipient: p.email,
                             subject: subject,
                             htmlContent: htmlContent,
-                            qrCodeDataUrl: qr
+                            qrData: { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf }
                         })
                     });
 

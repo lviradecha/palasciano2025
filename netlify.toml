@@ -1,6 +1,4 @@
-[build]
-  functions = "functions"
-  publish = "public"
-
-[functions]
-  node_bundler = "esbuild"
+[[redirects]]
+    from = "/*"
+    to = "/index.html"
+    status = 200

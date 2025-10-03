@@ -86,9 +86,8 @@
 <head><meta charset="UTF-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:20px;">
 <div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;">
-  <div style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:40px 20px;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">Palasciano 2025</h1>
-    <p style="color:#e0e7ff;margin:10px 0 0;">Again Edition - Campo di Formazione CRI</p>
+  <div style="padding:0;">
+    <img src="https://tuosito.com/images/banner.jpg" alt="Palasciano 2025 - CRI Napoli" style="width:100%;height:auto;display:block;" />
   </div>
   <div style="padding:40px 30px;">
     <h2 style="color:#1f2937;margin:0 0 20px;">Ciao ${p.nome}!</h2>
@@ -106,6 +105,7 @@
     <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Nome:</strong> ${p.nome} ${p.cognome}</p>
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>CF:</strong> ${p.cf}</p>
+      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Tipo Partecipazione:</strong> ${p.tipoPartecipazione || 'Non specificato'}</p>
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Comitato:</strong> ${p.comitato}</p>
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p>
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Modalita Viaggio:</strong> ${p.viaggio}</p>
@@ -342,14 +342,15 @@
         }
 
         function RegistrationForm({ onSubmit, onAdminClick }) {
-            const [form, setForm] = useState({ nome: '', cognome: '', cf: '', tel: '', email: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
+            const [form, setForm] = useState({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
             const [success, setSuccess] = useState(false);
             const regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna', 'Friuli-Venezia Giulia', 'Lazio', 'Liguria', 'Lombardia', 'Marche', 'Molise', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana', 'Trentino-Alto Adige', 'Umbria', "Valle d'Aosta", 'Veneto'];
+            const tipiPartecipazione = ['Corsista', 'Ospite', 'Staff', 'Trainer'];
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 await onSubmit(form);
-                setForm({ nome: '', cognome: '', cf: '', tel: '', email: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
+                setForm({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
                 setSuccess(true);
                 setTimeout(() => setSuccess(false), 5000);
             };
@@ -365,6 +366,13 @@
                                 <div><label className="block text-sm font-medium mb-1">Cognome *</label><input required type="text" value={form.cognome} onChange={(e) => setForm({...form, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
                             </div>
                             <div><label className="block text-sm font-medium mb-1">Codice Fiscale *</label><input required type="text" maxLength="16" value={form.cf} onChange={(e) => setForm({...form, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Tipo Partecipazione *</label>
+                                <select required value={form.tipoPartecipazione} onChange={(e) => setForm({...form, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                                    <option value="">Seleziona tipo</option>
+                                    {tipiPartecipazione.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-sm font-medium mb-1">Cellulare *</label><input required type="tel" value={form.tel} onChange={(e) => setForm({...form, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
                                 <div><label className="block text-sm font-medium mb-1">Email *</label><input required type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
@@ -561,8 +569,8 @@
                             )}
                             {permissions.canExportCSV && (
                                 <button onClick={() => {
-                                    const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Stato'];
-                                    const rows = participants.map(p => [p.nome, p.cognome, p.cf, p.email, p.tel, p.comitato, p.regione, p.arrivo, p.partenza, p.viaggio, p.status]);
+                                    const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Stato'];
+                                    const rows = participants.map(p => [p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, p.arrivo, p.partenza, p.viaggio, p.status]);
                                     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
                                     const blob = new Blob([csv], { type: 'text/csv' });
                                     const url = URL.createObjectURL(blob);
@@ -602,6 +610,7 @@
                                                         </div>
                                                         <p className="text-sm text-gray-600">{p.email} • {p.tel}</p>
                                                         <p className="text-sm text-gray-600">{p.comitato} - {p.regione}</p>
+                                                        {p.tipoPartecipazione && <p className="text-sm text-gray-600">Tipo: {p.tipoPartecipazione}</p>}
                                                         <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${p.status === 'preiscritto' ? 'bg-blue-100 text-blue-800' : p.status === 'checkin' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{p.status}</span>
                                                     </div>
                                                     <div className="flex flex-col gap-2">
@@ -676,6 +685,16 @@
                                     </div>
                                     <div><label className="block text-sm font-medium mb-1">Comitato</label><input type="text" value={edit.comitato} onChange={(e) => setEdit({...edit, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
                                     <div><label className="block text-sm font-medium mb-1">Regione</label><input type="text" value={edit.regione} onChange={(e) => setEdit({...edit, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Tipo Partecipazione</label>
+                                        <select value={edit.tipoPartecipazione || ''} onChange={(e) => setEdit({...edit, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                                            <option value="">Seleziona tipo</option>
+                                            <option value="Corsista">Corsista</option>
+                                            <option value="Ospite">Ospite</option>
+                                            <option value="Staff">Staff</option>
+                                            <option value="Trainer">Trainer</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div className="flex gap-2 mt-6">
                                     <button onClick={() => { onUpdate(edit.id, edit); setEdit(null); }} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Salva</button>

@@ -107,7 +107,10 @@
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Nome:</strong> ${p.nome} ${p.cognome}</p>
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>CF:</strong> ${p.cf}</p>
       <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Comitato:</strong> ${p.comitato}</p>
-      <p style="margin:0;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p>
+      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p>
+      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Modalita Viaggio:</strong> ${p.viaggio}</p>
+      ${p.targa && p.veicolo ? `<p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Veicolo:</strong> ${p.veicolo} - Targa: ${p.targa}</p>` : ''}
+      ${p.arrivo && p.partenza ? `<p style="margin:0;color:#6b7280;font-size:14px;"><strong>Periodo:</strong> ${p.arrivo} / ${p.partenza}</p>` : ''}
     </div>
     <p style="color:#4b5563;margin:20px 0 0;">
       <strong>Un caro saluto,</strong><br>

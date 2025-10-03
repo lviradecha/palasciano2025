@@ -418,51 +418,65 @@
             const filtered = participants.filter(p => p.nome.toLowerCase().includes(search.toLowerCase()) || p.cognome.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase()));
 
             const startScanner = () => {
-                setShowScanner(true);
-                setTimeout(() => {
-                    const html5QrCode = new Html5Qrcode("qr-reader");
-                    setScannerInstance(html5QrCode);
+    setShowScanner(true);
+    setTimeout(() => {
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        setScannerInstance(html5QrCode);
+        
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                try {
+                    const data = JSON.parse(decodedText);
+                    console.log('📱 QR Scansionato:', data);
+                    console.log('👥 Partecipanti nel database:', participants.length);
+                    console.log('🔍 IDs disponibili:', participants.map(p => ({ id: p.id, nome: p.nome })));
                     
-                    html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (decodedText) => {
-                            try {
-                                const data = JSON.parse(decodedText);
-                                if (data.id && data.nome && data.cognome) {
-                                    const participant = participants.find(p => p.id === data.id);
-                                    if (participant) {
-                                        if (participant.status === 'preiscritto') {
-                                            onUpdateStatus(data.id, 'checkin');
-                                            html5QrCode.stop();
-                                            setShowScanner(false);
-                                            alert(`✅ Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}`);
-                                        } else if (participant.status === 'checkin') {
-                                            if (confirm(`${data.nome} ${data.cognome} è già in check-in.\n\nVuoi accreditarlo?`)) {
-                                                onUpdateStatus(data.id, 'accreditato');
-                                                html5QrCode.stop();
-                                                setShowScanner(false);
-                                            }
-                                        } else {
-                                            alert(`✅ ${data.nome} ${data.cognome}\nè già accreditato!`);
-                                        }
-                                    } else {
-                                        alert('❌ Partecipante non trovato!');
-                                    }
-                                } else {
-                                    alert('❌ QR Code non valido!');
+                    if (data.id && data.nome && data.cognome) {
+                        // CORREZIONE PRINCIPALE QUI
+                        const participant = participants.find(p => 
+                            String(p.id) === String(data.id) || 
+                            (p.nome === data.nome && p.cognome === data.cognome && p.cf === data.cf)
+                        );
+                        
+                        console.log('✅ Partecipante trovato:', participant);
+                        
+                        if (participant) {
+                            html5QrCode.stop().then(() => {
+                                setScannerInstance(null);
+                                setShowScanner(false);
+                            });
+                            
+                            if (participant.status === 'preiscritto') {
+                                onUpdateStatus(participant.id, 'checkin');
+                                alert(`✅ Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}`);
+                            } else if (participant.status === 'checkin') {
+                                if (confirm(`${data.nome} ${data.cognome} è già in check-in.\n\nVuoi accreditarlo?`)) {
+                                    onUpdateStatus(participant.id, 'accreditato');
                                 }
-                            } catch (e) {
-                                alert('❌ Errore lettura QR!');
+                            } else {
+                                alert(`✅ ${data.nome} ${data.cognome}\nè già accreditato!`);
                             }
-                        },
-                        (errorMessage) => {}
-                    ).catch(err => {
-                        alert('❌ Impossibile avviare fotocamera. Verifica i permessi.');
-                    });
-                }, 100);
-            };
-
+                        } else {
+                            alert(`❌ Partecipante non trovato!\n\nNome: ${data.nome} ${data.cognome}\nID QR: ${data.id}\n\nVerifica che sia stato preiscritto.`);
+                            console.error('❌ Ricerca fallita. Dati dal QR:', data);
+                        }
+                    } else {
+                        alert('❌ QR Code non valido! Dati mancanti.');
+                    }
+                } catch (e) {
+                    alert('❌ Errore lettura QR: ' + e.message);
+                    console.error('❌ Errore:', e);
+                }
+            },
+            (errorMessage) => {}
+        ).catch(err => {
+            alert('❌ Impossibile avviare fotocamera');
+            console.error(err);
+        });
+    }, 100);
+};
             const stopScanner = () => {
                 if (scannerInstance) {
                     scannerInstance.stop().then(() => {
@@ -634,3 +648,4 @@
     </script>
 </body>
 </html>
+

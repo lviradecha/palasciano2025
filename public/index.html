@@ -257,7 +257,10 @@
 
             const updateStatus = async (id, status) => {
                 try {
-                    const participant = participants.find(p => p.id === id);
+                    const participant = participants.find(p => 
+    String(p.id) === String(data.id) || 
+    (p.nome === data.nome && p.cognome === data.cognome && p.cf === data.cf)
+);
                     if (!participant) return;
 
                     const updatedData = { ...participant, status };
@@ -648,4 +651,5 @@
     </script>
 </body>
 </html>
+
 

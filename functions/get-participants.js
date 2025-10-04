@@ -9,19 +9,51 @@ exports.handler = async (event) => {
   try {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
 
-    // Recupera tutti i partecipanti
+    // Recupera tutti i partecipanti con tutti i campi
     const participants = await sql`
-      SELECT * FROM participants 
+      SELECT 
+        id, nome, cognome, cf, tel, email, 
+        tipoPartecipazione, comitato, regione, 
+        arrivo, partenza, viaggio, targa, veicolo, 
+        status, emailSent,
+        data_preiscrizione, data_checkin, data_accreditamento,
+        created_at, updated_at
+      FROM participants 
       ORDER BY created_at DESC
     `;
 
-    console.log('✅ Recuperati', participants.length, 'partecipanti');
+    // Converti i campi nel formato che si aspetta il frontend
+    const formattedParticipants = participants.map(p => ({
+      id: p.id,
+      nome: p.nome,
+      cognome: p.cognome,
+      cf: p.cf,
+      tel: p.tel,
+      email: p.email,
+      tipoPartecipazione: p.tipopartecipazione, // PostgreSQL lowercase automatico
+      comitato: p.comitato,
+      regione: p.regione,
+      arrivo: p.arrivo,
+      partenza: p.partenza,
+      viaggio: p.viaggio,
+      targa: p.targa,
+      veicolo: p.veicolo,
+      status: p.status,
+      emailSent: p.emailsent, // PostgreSQL lowercase automatico
+      dataPreiscrizione: p.data_preiscrizione,
+      dataCheckin: p.data_checkin,
+      dataAccreditamento: p.data_accreditamento,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at
+    }));
+
+    console.log('✅ Recuperati', formattedParticipants.length, 'partecipanti');
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        participants: participants
+        participants: formattedParticipants
       })
     };
 

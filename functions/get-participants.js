@@ -45,7 +45,7 @@ exports.handler = async (event) => {
       updatedAt: p.updated_at
     }));
 
-    console.log('✅ Recuperati', formattedParticipants.length, 'partecipanti');
+    console.log('Recuperati', formattedParticipants.length, 'partecipanti');
 
     return {
       statusCode: 200,
@@ -56,7 +56,7 @@ exports.handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('❌ Errore recupero dati:', error);
+    console.error('Errore recupero dati:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({

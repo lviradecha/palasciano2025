@@ -55,17 +55,35 @@
             };
 
             const generateQR = (data) => {
-                const tempDiv = document.createElement('div');
-                tempDiv.style.display = 'none';
-                document.body.appendChild(tempDiv);
-                
-                const qr = new QRCode(tempDiv, {
-                    text: JSON.stringify(data),
-                    width: 300,
-                    height: 300,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.H
+    const tempDiv = document.createElement('div');
+    tempDiv.style.display = 'none';
+    document.body.appendChild(tempDiv);
+    
+    // Dati ridotti per evitare overflow
+    const qrData = {
+        id: data.id,
+        nome: data.nome,
+        cognome: data.cognome,
+        cf: data.cf,
+        targa: data.targa || '',
+        tipo: data.tipoPartecipazione || ''
+    };
+    
+    const qr = new QRCode(tempDiv, {
+        text: JSON.stringify(qrData),
+        width: 300,
+        height: 300,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L  // L = massima capacità dati
+    });
+    
+    const canvas = tempDiv.querySelector('canvas');
+    const dataUrl = canvas.toDataURL('image/png');
+    document.body.removeChild(tempDiv);
+    
+    return dataUrl;
+};
                 });
                 
                 const canvas = tempDiv.querySelector('canvas');
@@ -776,4 +794,5 @@ const rows = participants.map(p => [
     </script>
 </body>
 </html>
+
 

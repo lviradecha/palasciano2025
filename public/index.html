@@ -612,8 +612,23 @@
                             )}
                             {permissions.canExportCSV && (
                                 <button onClick={() => {
-                                    const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Stato'];
-                                    const rows = participants.map(p => [p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, p.arrivo, p.partenza, p.viaggio, p.status]);
+const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Targa', 'Veicolo', 'Stato'];
+const rows = participants.map(p => [
+    p.nome, 
+    p.cognome, 
+    p.cf, 
+    p.email, 
+    p.tel, 
+    p.tipoPartecipazione || '', 
+    p.comitato, 
+    p.regione, 
+    p.arrivo || '', 
+    p.partenza || '', 
+    p.viaggio, 
+    p.targa || '', 
+    p.veicolo || '', 
+    p.status
+]);
                                     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
                                     const blob = new Blob([csv], { type: 'text/csv' });
                                     const url = URL.createObjectURL(blob);
@@ -761,3 +776,4 @@
     </script>
 </body>
 </html>
+

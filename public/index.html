@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palasciano 2025</title>
+    <title>Palasciano Red Cross Camp Napoli</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
@@ -78,7 +78,7 @@
             const sendEmail = async (p, type) => {
                 const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
                 
-                const subject = type === 'welcome' ? '🎉 Benvenuto al Campo Palasciano 2025!' : '✅ Conferma Preiscrizione - Palasciano 2025';
+                const subject = type === 'welcome' ? '🎉 Benvenuto al Palasciano Red Cross Camp Napoli!' : '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli';
                 
                 const htmlContent = `
 <!DOCTYPE html>
@@ -87,15 +87,15 @@
 <body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:20px;">
 <div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;">
   <div style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:40px 20px;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">Palasciano 2025</h1>
-    <p style="color:#e0e7ff;margin:10px 0 0;">Again Edition - Campo di Formazione CRI</p>
+    <h1 style="color:white;margin:0;font-size:28px;">Palasciano Red Cross Camp Napoli</h1>
+    <p style="color:#e0e7ff;margin:10px 0 0;">Campo di Formazione CRI 2025</p>
   </div>
   <div style="padding:40px 30px;">
     <h2 style="color:#1f2937;margin:0 0 20px;">Ciao ${p.nome}!</h2>
     <p style="color:#4b5563;line-height:1.6;margin:0 0 20px;">
       ${type === 'welcome' 
-        ? 'Benvenuto al Campo Palasciano 2025! Sei stato accreditato con successo. Ti aspettiamo!' 
-        : 'Siamo felici di confermare la tua preiscrizione al Campo di Formazione Palasciano 2025.'}
+        ? 'Benvenuto al Palasciano Red Cross Camp Napoli! Sei stato accreditato con successo. Ti aspettiamo!' 
+        : 'Siamo felici di confermare la tua preiscrizione al Campo di Formazione Palasciano Red Cross Camp Napoli 2025.'}
     </p>
     ${type !== 'welcome' ? `
     <div style="text-align:center;margin:30px 0;">
@@ -115,7 +115,7 @@
     </div>
     <p style="color:#4b5563;margin:20px 0 0;">
       <strong>Un caro saluto,</strong><br>
-      <span style="color:#4f46e5;font-weight:600;">Lo Staff Palasciano 2025</span>
+      <span style="color:#4f46e5;font-weight:600;">Lo Staff Palasciano Red Cross Camp Napoli</span>
     </p>
   </div>
   <div style="background:#f9fafb;padding:30px 20px;text-align:center;border-top:1px solid #e5e7eb;">
@@ -301,7 +301,7 @@
                         <div className="max-w-7xl mx-auto px-4 py-4">
                             <img 
                                 src="/images/banner.jpg" 
-                                alt="Palasciano 2025 - CRI Napoli" 
+                                alt="Palasciano Red Cross Camp Napoli - CRI Napoli" 
                                 className="w-full h-auto max-h-32 object-contain"
                             />
                         </div>
@@ -490,7 +490,6 @@
             const [showScanner, setShowScanner] = useState(false);
             const [scannerInstance, setScannerInstance] = useState(null);
 
-            // Permessi basati sul ruolo
             const permissions = {
                 canDelete: userRole === 'ADMIN',
                 canEdit: userRole === 'ADMIN' || userRole === 'STAFF_ACCREDITAMENTO',
@@ -524,12 +523,11 @@
                         (decodedText) => {
                             try {
                                 const data = JSON.parse(decodedText);
-                                console.log('QR Scansionato:', data);
                                 
                                 if (data.id && data.nome && data.cognome) {
                                     const participant = participants.find(p => 
-                                        String(p.id) === String(data.id) || 
-                                        (p.nome === data.nome && p.cognome === data.cognome && p.cf === data.cf)
+                                        String(p.id) === String(data.id) ||
+(p.nome === data.nome && p.cognome === data.cognome && p.cf === data.cf)
                                     );
                                     
                                     if (participant) {

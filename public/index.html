@@ -84,7 +84,7 @@ const generateQR = (data) => {
 };
 
 const sendEmail = async (p, type) => {
-    const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf, targa: p.targa, tipoPartecipazione: p.tipoPartecipazione });
+const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
                 
                 const subject = type === 'welcome' ? '🎉 Benvenuto al Palasciano Red Cross Camp Napoli!' : '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli';
                 
@@ -784,6 +784,7 @@ const rows = participants.map(p => [
     </script>
 </body>
 </html>
+
 
 
 

@@ -46,11 +46,12 @@ exports.handler = async (event, context) => {
       finalHtml = htmlContent.replace(/src="data:image\/png;base64,[^"]*"/, `src="${qrCodeDataUrl}"`);
     }
 
-    // Inizializza Mailgun
+    // Inizializza Mailgun con server EU
     const mailgun = new Mailgun(formData);
     const mg = mailgun.client({
       username: 'api',
-      key: apiKey
+      key: apiKey,
+      url: 'https://api.eu.mailgun.net'
     });
 
     // Prepara l'email

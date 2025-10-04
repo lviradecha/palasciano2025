@@ -53,13 +53,11 @@
                 setToast({ show: true, message: msg });
                 setTimeout(() => setToast({ show: false, message: '' }), 3000);
             };
-
-            const generateQR = (data) => {
+const generateQR = (data) => {
     const tempDiv = document.createElement('div');
     tempDiv.style.display = 'none';
     document.body.appendChild(tempDiv);
     
-    // Dati ridotti per evitare overflow
     const qrData = {
         id: data.id,
         nome: data.nome,
@@ -75,7 +73,7 @@
         height: 300,
         colorDark: '#000000',
         colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.L  // L = massima capacità dati
+        correctLevel: QRCode.CorrectLevel.L
     });
     
     const canvas = tempDiv.querySelector('canvas');
@@ -84,15 +82,9 @@
     
     return dataUrl;
 };
-                });
-                
-                const canvas = tempDiv.querySelector('canvas');
-                const dataUrl = canvas.toDataURL('image/png');
-                document.body.removeChild(tempDiv);
-                
-                return dataUrl;
-            };
 
+const sendEmail = async (p, type) => {
+    const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf, targa: p.targa, tipoPartecipazione: p.tipoPartecipazione });
             const sendEmail = async (p, type) => {
                 const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
                 
@@ -794,5 +786,6 @@ const rows = participants.map(p => [
     </script>
 </body>
 </html>
+
 
 

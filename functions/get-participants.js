@@ -9,7 +9,6 @@ exports.handler = async (event) => {
   try {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
 
-    // Recupera tutti i partecipanti - USA snake_case nel SELECT
     const participants = await sql`
       SELECT 
         id, nome, cognome, cf, tel, email, 
@@ -22,7 +21,6 @@ exports.handler = async (event) => {
       ORDER BY created_at DESC
     `;
 
-    // Converti i campi nel formato che si aspetta il frontend (camelCase)
     const formattedParticipants = participants.map(p => ({
       id: p.id,
       nome: p.nome,

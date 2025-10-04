@@ -9,20 +9,20 @@ exports.handler = async (event) => {
   try {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
 
-    // Recupera tutti i partecipanti con tutti i campi
+    // Recupera tutti i partecipanti - USA snake_case nel SELECT
     const participants = await sql`
       SELECT 
         id, nome, cognome, cf, tel, email, 
-        tipoPartecipazione, comitato, regione, 
+        tipopartecipazione, comitato, regione, 
         arrivo, partenza, viaggio, targa, veicolo, 
-        status, emailSent,
+        status, email_sent,
         data_preiscrizione, data_checkin, data_accreditamento,
         created_at, updated_at
       FROM participants 
       ORDER BY created_at DESC
     `;
 
-    // Converti i campi nel formato che si aspetta il frontend
+    // Converti i campi nel formato che si aspetta il frontend (camelCase)
     const formattedParticipants = participants.map(p => ({
       id: p.id,
       nome: p.nome,
@@ -30,7 +30,7 @@ exports.handler = async (event) => {
       cf: p.cf,
       tel: p.tel,
       email: p.email,
-      tipoPartecipazione: p.tipopartecipazione, // PostgreSQL lowercase automatico
+      tipoPartecipazione: p.tipopartecipazione,
       comitato: p.comitato,
       regione: p.regione,
       arrivo: p.arrivo,
@@ -39,7 +39,7 @@ exports.handler = async (event) => {
       targa: p.targa,
       veicolo: p.veicolo,
       status: p.status,
-      emailSent: p.emailsent, // PostgreSQL lowercase automatico
+      emailSent: p.email_sent,
       dataPreiscrizione: p.data_preiscrizione,
       dataCheckin: p.data_checkin,
       dataAccreditamento: p.data_accreditamento,

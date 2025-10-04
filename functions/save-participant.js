@@ -10,13 +10,13 @@ exports.handler = async (event) => {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
     const data = JSON.parse(event.body);
     
-    // Inserisci partecipante con TUTTI i campi della tabella
+    // Inserisci partecipante - USA snake_case per i nomi delle colonne
     const result = await sql`
       INSERT INTO participants (
         id, nome, cognome, cf, tel, email, 
-        tipoPartecipazione, comitato, regione, 
+        tipopartecipazione, comitato, regione, 
         arrivo, partenza, viaggio, targa, veicolo, 
-        status, emailSent, data_preiscrizione
+        status, email_sent, data_preiscrizione
       ) VALUES (
         ${data.id}, 
         ${data.nome}, 

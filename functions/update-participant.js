@@ -1,70 +1,43 @@
-// functions/update-participant.js
 const { neon } = require('@neondatabase/serverless');
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'PUT' && event.httpMethod !== 'PATCH') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
-
-  try {
-    const sql = neon(process.env.NETLIFY_DATABASE_URL);
-    const data = JSON.parse(event.body);
-
-    // Aggiorna partecipante - USA snake_case per i nomi delle colonne
-    const result = await sql`
-      UPDATE participants 
-      SET 
-        nome = ${data.nome},
-        cognome = ${data.cognome},
-        cf = ${data.cf},
-        tel = ${data.tel},
-        email = ${data.email},
-        tipopartecipazione = ${data.tipoPartecipazione || null},
-        comitato = ${data.comitato},
-        regione = ${data.regione},
-        arrivo = ${data.arrivo},
-        partenza = ${data.partenza},
-        viaggio = ${data.viaggio},
-        targa = ${data.targa || null},
-        veicolo = ${data.veicolo || null},
-        status = ${data.status},
-        email_sent = ${data.emailSent || false},
-        data_preiscrizione = ${data.dataPreiscrizione || null},
-        data_checkin = ${data.dataCheckin || null},
-        data_accreditamento = ${data.dataAccreditamento || null},
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${data.id}
-      RETURNING *
-    `;
-
-    if (result.length === 0) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({
-          success: false,
-          error: 'Partecipante non trovato'
-        })
-      };
+    if (event.httpMethod !== 'PUT') {
+        return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
     }
 
-    console.log('✅ Partecipante aggiornato:', data.email);
+    try {
+        const data = JSON.parse(event.body);
+        const sql = neon(process.env.NETLIFY_DATABASE_URL);
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        participant: result[0]
-      })
-    };
+        await sql`
+            UPDATE partecipanti SET
+                nome = ${data.nome},
+                cognome = ${data.cognome},
+                cf = ${data.cf},
+                tel = ${data.tel},
+                email = ${data.email},
+                tipo_partecipazione = ${data.tipoPartecipazione || null},
+                comitato = ${data.comitato},
+                regione = ${data.regione},
+                arrivo = ${data.arrivo || null},
+                partenza = ${data.partenza || null},
+                viaggio = ${data.viaggio || null},
+                targa = ${data.targa || null},
+                veicolo = ${data.veicolo || null},
+                status = ${data.status || 'preiscritto'},
+                email_sent = ${data.emailSent || false}
+            WHERE id = ${data.id}
+        `;
 
-  } catch (error) {
-    console.error('❌ Errore aggiornamento:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        error: error.message
-      })
-    };
-  }
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ success: true })
+        };
+    } catch (error) {
+        console.error('Errore update-participant:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ success: false, error: error.message })
+        };
+    }
 };

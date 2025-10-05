@@ -39,7 +39,7 @@
                     
                     if (result.success) {
                         setParticipants(result.participants);
-                        console.log('✅ Caricati', result.participants.length, 'partecipanti dal database');
+                        console.log('✅ Caricati', result.participants.length, 'partecipanti');
                     }
                 } catch (error) {
                     console.error('❌ Errore caricamento:', error);
@@ -77,214 +77,80 @@
 
             const sendEmail = async (p, type) => {
                 const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
-                
                 const subject = type === 'welcome' ? '🎉 Benvenuto al Palasciano Red Cross Camp Napoli!' : '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli';
                 
-                const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:20px;">
-<div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;">
-  <div style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:40px 20px;text-align:center;">
-    <h1 style="color:white;margin:0;font-size:28px;">Palasciano Red Cross Camp Napoli</h1>
-    <p style="color:#e0e7ff;margin:10px 0 0;">Campo di Formazione CRI 2025</p>
-  </div>
-  <div style="padding:40px 30px;">
-    <h2 style="color:#1f2937;margin:0 0 20px;">Ciao ${p.nome}!</h2>
-    <p style="color:#4b5563;line-height:1.6;margin:0 0 20px;">
-      ${type === 'welcome' 
-        ? 'Benvenuto al Palasciano Red Cross Camp Napoli! Sei stato accreditato con successo. Ti aspettiamo!' 
-        : 'Siamo felici di confermare la tua preiscrizione al Campo di Formazione Palasciano Red Cross Camp Napoli 2025.'}
-    </p>
-    ${type !== 'welcome' ? `
-    <div style="text-align:center;margin:30px 0;">
-      <p style="color:#4b5563;margin:0 0 15px;font-weight:600;">Il Tuo QR Code Personale</p>
-      <img src="${qr}" alt="QR Code" style="width:250px;height:250px;border:3px solid #4f46e5;border-radius:12px;"/>
-      <p style="color:#6b7280;margin:15px 0 0;font-size:13px;">Presenta questo QR Code durante il check-in</p>
-    </div>` : ''}
-    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
-      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Nome:</strong> ${p.nome} ${p.cognome}</p>
-      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>CF:</strong> ${p.cf}</p>
-      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Tipo Partecipazione:</strong> ${p.tipoPartecipazione || 'Non specificato'}</p>
-      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Comitato:</strong> ${p.comitato}</p>
-      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p>
-      <p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Modalita Viaggio:</strong> ${p.viaggio}</p>
-      ${p.targa && p.veicolo ? `<p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Veicolo:</strong> ${p.veicolo} - Targa: ${p.targa}</p>` : ''}
-      ${p.arrivo && p.partenza ? `<p style="margin:0;color:#6b7280;font-size:14px;"><strong>Periodo:</strong> ${p.arrivo} / ${p.partenza}</p>` : ''}
-    </div>
-    <p style="color:#4b5563;margin:20px 0 0;">
-      <strong>Un caro saluto,</strong><br>
-      <span style="color:#4f46e5;font-weight:600;">Lo Staff Palasciano Red Cross Camp Napoli</span>
-    </p>
-  </div>
-  <div style="background:#f9fafb;padding:30px 20px;text-align:center;border-top:1px solid #e5e7eb;">
-    <p style="color:#6b7280;margin:0;font-size:14px;">Croce Rossa Italiana</p>
-  </div>
-</div>
-</body>
-</html>`;
+                const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:20px;"><div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;"><div style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:40px 20px;text-align:center;"><h1 style="color:white;margin:0;font-size:28px;">Palasciano Red Cross Camp Napoli</h1><p style="color:#e0e7ff;margin:10px 0 0;">Campo di Formazione CRI 2025</p></div><div style="padding:40px 30px;"><h2 style="color:#1f2937;margin:0 0 20px;">Ciao ${p.nome}!</h2><p style="color:#4b5563;line-height:1.6;margin:0 0 20px;">${type === 'welcome' ? 'Benvenuto al Palasciano Red Cross Camp Napoli! Sei stato accreditato con successo. Ti aspettiamo!' : 'Siamo felici di confermare la tua preiscrizione al Campo di Formazione Palasciano Red Cross Camp Napoli 2025.'}</p>${type !== 'welcome' ? `<div style="text-align:center;margin:30px 0;"><p style="color:#4b5563;margin:0 0 15px;font-weight:600;">Il Tuo QR Code Personale</p><img src="${qr}" alt="QR Code" style="width:250px;height:250px;border:3px solid #4f46e5;border-radius:12px;"/><p style="color:#6b7280;margin:15px 0 0;font-size:13px;">Presenta questo QR Code durante il check-in</p></div>` : ''}<div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;"><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Nome:</strong> ${p.nome} ${p.cognome}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>CF:</strong> ${p.cf}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Tipo:</strong> ${p.tipoPartecipazione || 'Non specificato'}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Comitato:</strong> ${p.comitato}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p><p style="margin:0;color:#6b7280;font-size:14px;"><strong>Periodo:</strong> ${p.arrivo} / ${p.partenza}</p></div><p style="color:#4b5563;margin:20px 0 0;"><strong>Un caro saluto,</strong><br><span style="color:#4f46e5;font-weight:600;">Lo Staff Palasciano Red Cross Camp Napoli</span></p></div><div style="background:#f9fafb;padding:30px 20px;text-align:center;border-top:1px solid #e5e7eb;"><p style="color:#6b7280;margin:0;font-size:14px;">Croce Rossa Italiana</p></div></div></body></html>`;
 
                 try {
                     const response = await fetch('/.netlify/functions/send-email', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            recipient: p.email,
-                            subject: subject,
-                            htmlContent: htmlContent,
-                            qrData: { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf }
-                        })
+                        body: JSON.stringify({ recipient: p.email, subject: subject, htmlContent: htmlContent, qrData: { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf } })
                     });
 
                     const result = await response.json();
-                    
                     if (result.success) {
-                        const log = {
-                            id: Date.now(),
-                            timestamp: new Date().toISOString(),
-                            recipient: p.email,
-                            name: `${p.nome} ${p.cognome}`,
-                            subject: subject,
-                            qr: qr,
-                            messageId: result.messageId
-                        };
+                        const log = { id: Date.now(), timestamp: new Date().toISOString(), recipient: p.email, name: `${p.nome} ${p.cognome}`, subject: subject, qr: qr, messageId: result.messageId };
                         setEmailLog(prev => [log, ...prev]);
-                        console.log('✅ Email inviata via Mailgun:', result.messageId);
-                    } else {
-                        throw new Error(result.error);
                     }
                 } catch (error) {
-                    console.error('❌ Errore invio email:', error);
-                    const log = {
-                        id: Date.now(),
-                        timestamp: new Date().toISOString(),
-                        recipient: p.email,
-                        name: `${p.nome} ${p.cognome}`,
-                        subject: subject + ' (ERRORE)',
-                        qr: qr,
-                        error: error.message
-                    };
-                    setEmailLog(prev => [log, ...prev]);
+                    console.error('❌ Errore email:', error);
                 }
             };
 
             const addParticipant = async (data) => {
-                const p = { 
-                    id: Date.now(), 
-                    ...data, 
-                    status: 'preiscritto', 
-                    emailSent: false 
-                };
-                
                 try {
                     const response = await fetch('/.netlify/functions/save-participant', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(p)
+                        body: JSON.stringify(data)
                     });
-
                     const result = await response.json();
-
                     if (result.success) {
-                        await sendEmail(p, 'registration');
-                        
-                        p.emailSent = true;
+                        const newP = { id: result.id, ...data };
+                        await sendEmail(newP, 'registration');
                         await fetch('/.netlify/functions/update-participant', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(p)
+                            body: JSON.stringify({ ...newP, emailSent: true })
                         });
-
                         showToast('✅ Preiscrizione completata! Email inviata');
-                        console.log('✅ Partecipante salvato:', p.email);
-                    } else {
-                        throw new Error(result.error);
                     }
                 } catch (error) {
-                    console.error('❌ Errore salvataggio:', error);
-                    showToast('❌ Errore durante la registrazione');
+                    showToast('❌ Errore registrazione');
                 }
             };
 
             const updateParticipant = async (id, data) => {
                 try {
-                    const updatedData = { ...data, id };
-                    
                     const response = await fetch('/.netlify/functions/update-participant', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(updatedData)
+                        body: JSON.stringify({ ...data, id })
                     });
-
-                    const result = await response.json();
-
-                    if (result.success) {
+                    if ((await response.json()).success) {
                         await loadParticipants();
-                        showToast('✏️ Partecipante aggiornato');
-                    } else {
-                        throw new Error(result.error);
+                        showToast('✏️ Aggiornato');
                     }
                 } catch (error) {
-                    console.error('❌ Errore aggiornamento:', error);
-                    showToast('❌ Errore aggiornamento');
+                    showToast('❌ Errore');
                 }
             };
 
             const deleteParticipant = async (id) => {
                 if (!confirm('Eliminare questo partecipante?')) return;
-                
                 try {
                     const response = await fetch('/.netlify/functions/delete-participant', {
                         method: 'DELETE',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id })
                     });
-
-                    const result = await response.json();
-
-                    if (result.success) {
+                    if ((await response.json()).success) {
                         await loadParticipants();
                         showToast('🗑️ Eliminato');
-                    } else {
-                        throw new Error(result.error);
                     }
                 } catch (error) {
-                    console.error('❌ Errore eliminazione:', error);
-                    showToast('❌ Errore eliminazione');
-                }
-            };
-
-            const updateStatus = async (id, status) => {
-                try {
-                    const participant = participants.find(p => p.id === id);
-                    if (!participant) return;
-
-                    const updatedData = { ...participant, status };
-                    
-                    const response = await fetch('/.netlify/functions/update-participant', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(updatedData)
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        await loadParticipants();
-                        
-                        if (status === 'accreditato') {
-                            await sendEmail(participant, 'welcome');
-                            showToast('🎉 Accreditato! Email di benvenuto inviata');
-                        } else {
-                            showToast(`Status: ${status}`);
-                        }
-                    } else {
-                        throw new Error(result.error);
-                    }
-                } catch (error) {
-                    console.error('❌ Errore cambio status:', error);
-                    showToast('❌ Errore aggiornamento status');
+                    showToast('❌ Errore');
                 }
             };
 
@@ -299,40 +165,21 @@
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
                     <header className="bg-white shadow-lg">
                         <div className="max-w-7xl mx-auto px-4 py-4">
-                            <img 
-                                src="/images/banner.jpg" 
-                                alt="Palasciano Red Cross Camp Napoli - CRI Napoli" 
-                                className="w-full h-auto max-h-32 object-contain"
-                            />
+                            <img src="/images/banner.jpg" alt="Palasciano Red Cross Camp Napoli" className="w-full h-auto max-h-32 object-contain" />
                         </div>
                     </header>
-
                     {!userRole && view === 'home' && <RegistrationForm onSubmit={addParticipant} onAdminClick={() => setView('login')} />}
                     {view === 'login' && !userRole && <LoginForm onLogin={(role) => { setUserRole(role); setView('dash'); }} onBack={() => setView('home')} />}
-                    {userRole && (
-                        loading ? (
-                            <div className="flex items-center justify-center min-h-[50vh]">
-                                <div className="text-center">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                                    <p className="text-gray-600">Caricamento dati...</p>
-                                </div>
+                    {userRole && (loading ? (
+                        <div className="flex items-center justify-center min-h-[50vh]">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                                <p className="text-gray-600">Caricamento...</p>
                             </div>
-                        ) : (
-                            <Dashboard 
-                                participants={participants} 
-                                emailLog={emailLog} 
-                                stats={stats}
-                                userRole={userRole}
-                                onUpdateStatus={updateStatus} 
-                                onUpdate={updateParticipant} 
-                                onDelete={deleteParticipant} 
-                                onSendEmail={sendEmail} 
-                                generateQR={generateQR} 
-                                onLogout={() => { setUserRole(null); setView('home'); }} 
-                            />
-                        )
-                    )}
-
+                        </div>
+                    ) : (
+                        <Dashboard participants={participants} emailLog={emailLog} stats={stats} userRole={userRole} onUpdate={updateParticipant} onDelete={deleteParticipant} onSendEmail={sendEmail} generateQR={generateQR} onReload={loadParticipants} onLogout={() => { setUserRole(null); setView('home'); }} />
+                    ))}
                     {toast.show && (
                         <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg shadow-lg p-4">
                             <p className="font-medium text-green-900">{toast.message}</p>
@@ -340,9 +187,7 @@
                     )}
                 </div>
             );
-        }
-
-        function RegistrationForm({ onSubmit, onAdminClick }) {
+        }function RegistrationForm({ onSubmit, onAdminClick }) {
             const [form, setForm] = useState({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
             const [success, setSuccess] = useState(false);
             const regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna', 'Friuli-Venezia Giulia', 'Lazio', 'Liguria', 'Lombardia', 'Marche', 'Molise', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana', 'Trentino-Alto Adige', 'Umbria', "Valle d'Aosta", 'Veneto'];
@@ -367,13 +212,7 @@
                                 <div><label className="block text-sm font-medium mb-1">Cognome *</label><input required type="text" value={form.cognome} onChange={(e) => setForm({...form, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
                             </div>
                             <div><label className="block text-sm font-medium mb-1">Codice Fiscale *</label><input required type="text" maxLength="16" value={form.cf} onChange={(e) => setForm({...form, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Tipo Partecipazione *</label>
-                                <select required value={form.tipoPartecipazione} onChange={(e) => setForm({...form, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
-                                    <option value="">Seleziona tipo</option>
-                                    {tipiPartecipazione.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                            </div>
+                            <div><label className="block text-sm font-medium mb-1">Tipo Partecipazione *</label><select required value={form.tipoPartecipazione} onChange={(e) => setForm({...form, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona tipo</option>{tipiPartecipazione.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-sm font-medium mb-1">Cellulare *</label><input required type="tel" value={form.tel} onChange={(e) => setForm({...form, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
                                 <div><label className="block text-sm font-medium mb-1">Email *</label><input required type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
@@ -403,7 +242,6 @@
         function LoginForm({ onLogin, onBack }) {
             const [selectedRole, setSelectedRole] = useState('');
             const [pwd, setPwd] = useState('');
-            
             const roles = [
                 { id: 'ADMIN', name: 'Amministratore', desc: 'Accesso completo', password: 'palasciano2025' },
                 { id: 'STAFF_CHECKIN', name: 'Staff Check-in', desc: 'Solo scansione check-in', password: 'checkin2025' },
@@ -411,78 +249,37 @@
             ];
             
             const handleLogin = () => {
-                if (!selectedRole) {
-                    alert('Seleziona un ruolo!');
-                    return;
-                }
-                
+                if (!selectedRole) { alert('Seleziona un ruolo'); return; }
                 const role = roles.find(r => r.id === selectedRole);
-                if (pwd === role.password) {
-                    onLogin(role.id);
-                } else {
-                    alert('Password errata!');
-                }
+                if (pwd === role.password) { onLogin(role.id); } else { alert('Password errata'); }
             };
             
             return (
                 <div className="min-h-screen flex items-center justify-center p-4">
                     <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
                         <h2 className="text-2xl font-bold mb-6 text-center">Accesso Staff</h2>
-                        
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">Seleziona Ruolo</label>
                                 <div className="space-y-2">
                                     {roles.map(role => (
-                                        <button
-                                            key={role.id}
-                                            onClick={() => setSelectedRole(role.id)}
-                                            className={`w-full text-left px-4 py-3 border-2 rounded-lg transition ${
-                                                selectedRole === role.id 
-                                                    ? 'border-indigo-600 bg-indigo-50' 
-                                                    : 'border-gray-200 hover:border-indigo-300'
-                                            }`}
-                                        >
+                                        <button key={role.id} onClick={() => setSelectedRole(role.id)} className={`w-full text-left px-4 py-3 border-2 rounded-lg transition ${selectedRole === role.id ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}>
                                             <div className="font-semibold">{role.name}</div>
                                             <div className="text-xs text-gray-600">{role.desc}</div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            
                             {selectedRole && (
-                                <div className="animate-fadeIn">
-                                    <label className="block text-sm font-medium mb-2">Password</label>
-                                    <input 
-                                        type="password" 
-                                        value={pwd} 
-                                        onChange={(e) => setPwd(e.target.value)} 
-                                        onKeyDown={(e) => e.key === 'Enter' && handleLogin()} 
-                                        className="w-full px-4 py-2 border rounded-lg" 
-                                        placeholder="Inserisci la password"
-                                        autoFocus
-                                    />
-                                </div>
+                                <div><label className="block text-sm font-medium mb-2">Password</label><input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} className="w-full px-4 py-2 border rounded-lg" placeholder="Inserisci la password" autoFocus /></div>
                             )}
-                            
-                            <button 
-                                onClick={handleLogin} 
-                                disabled={!selectedRole}
-                                className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            >
-                                Accedi
-                            </button>
-                            
-                            <button onClick={onBack} className="w-full px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
-                                Indietro
-                            </button>
+                            <button onClick={handleLogin} disabled={!selectedRole} className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-300">Accedi</button>
+                            <button onClick={onBack} className="w-full px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Indietro</button>
                         </div>
                     </div>
                 </div>
             );
-        }
-
-        function Dashboard({ participants, emailLog, stats, userRole, onUpdateStatus, onUpdate, onDelete, onSendEmail, generateQR, onLogout }) {
+        }function Dashboard({ participants, emailLog, stats, userRole, onUpdate, onDelete, onSendEmail, generateQR, onReload, onLogout }) {
             const [tab, setTab] = useState('all');
             const [search, setSearch] = useState('');
             const [edit, setEdit] = useState(null);
@@ -495,8 +292,6 @@
                 canEdit: userRole === 'ADMIN' || userRole === 'STAFF_ACCREDITAMENTO',
                 canSendEmail: userRole === 'ADMIN',
                 canExportCSV: userRole === 'ADMIN' || userRole === 'STAFF_ACCREDITAMENTO',
-                canAccredit: userRole === 'ADMIN' || userRole === 'STAFF_ACCREDITAMENTO',
-                canCheckin: true,
                 canViewEmail: userRole === 'ADMIN'
             };
 
@@ -520,57 +315,35 @@
                     html5QrCode.start(
                         { facingMode: "environment" },
                         { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (decodedText) => {
+                        async (decodedText) => {
                             try {
-                                const data = JSON.parse(decodedText);
-                                
-                                if (data.id && data.nome && data.cognome) {
-                                    const participant = participants.find(p => 
-                                        String(p.id) === String(data.id) ||
-(p.nome === data.nome && p.cognome === data.cognome && p.cf === data.cf)
-                                    );
-                                    
-                                    if (participant) {
-                                        html5QrCode.stop().then(() => {
-                                            setScannerInstance(null);
-                                            setShowScanner(false);
-                                        });
-                                        
-                                        if (participant.status === 'preiscritto') {
-                                            onUpdateStatus(participant.id, 'checkin');
-                                            alert(`Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}`);
-                                        } else if (participant.status === 'checkin') {
-                                            if (permissions.canAccredit && confirm(`${data.nome} ${data.cognome} e gia in check-in.\n\nVuoi accreditarlo?`)) {
-                                                onUpdateStatus(participant.id, 'accreditato');
-                                            }
-                                        } else {
-                                            alert(`${data.nome} ${data.cognome}\ne gia accreditato!`);
-                                        }
-                                    } else {
-                                        alert(`Partecipante non trovato!\n\nNome: ${data.nome} ${data.cognome}\nID QR: ${data.id}`);
-                                    }
+                                const qrData = JSON.parse(decodedText);
+                                html5QrCode.stop().then(() => { setScannerInstance(null); setShowScanner(false); });
+                                const response = await fetch('/.netlify/functions/check-in-scan', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ qrData })
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                    alert(result.message);
+                                    if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
+                                    await onReload();
                                 } else {
-                                    alert('QR Code non valido!');
+                                    alert(result.message || 'Errore');
                                 }
                             } catch (e) {
                                 alert('Errore lettura QR: ' + e.message);
                             }
                         },
                         (errorMessage) => {}
-                    ).catch(err => {
-                        alert('Impossibile avviare fotocamera');
-                    });
+                    ).catch(err => { alert('Impossibile avviare fotocamera'); });
                 }, 100);
             };
 
             const stopScanner = () => {
                 if (scannerInstance) {
-                    scannerInstance.stop().then(() => {
-                        setScannerInstance(null);
-                        setShowScanner(false);
-                    }).catch(() => {
-                        setShowScanner(false);
-                    });
+                    scannerInstance.stop().then(() => { setScannerInstance(null); setShowScanner(false); }).catch(() => { setShowScanner(false); });
                 } else {
                     setShowScanner(false);
                 }
@@ -579,41 +352,49 @@
             return (
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <div className="mb-6 flex items-center justify-between">
-                        <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getRoleBadge().color}`}>
-                            {getRoleBadge().text}
-                        </span>
-                        <button onClick={onLogout} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">
-                            Esci
-                        </button>
+                        <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getRoleBadge().color}`}>{getRoleBadge().text}</span>
+                        <button onClick={onLogout} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">Esci</button>
                     </div>
-
                     <div className="grid grid-cols-4 gap-6 mb-8">
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Totale</p><p className="text-3xl font-bold">{stats.total}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Preiscritti</p><p className="text-3xl font-bold text-blue-600">{stats.preiscritti}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Check-in</p><p className="text-3xl font-bold text-orange-600">{stats.checkin}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Accreditati</p><p className="text-3xl font-bold text-green-600">{stats.accreditati}</p></div>
                     </div>
-
                     <div className="bg-white rounded-lg shadow">
                         <div className="flex border-b overflow-x-auto">
                             <button onClick={() => setTab('all')} className={`px-6 py-3 whitespace-nowrap ${tab === 'all' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Tutti ({stats.total})</button>
                             <button onClick={() => setTab('preiscritto')} className={`px-6 py-3 whitespace-nowrap ${tab === 'preiscritto' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Preiscritti ({stats.preiscritti})</button>
                             <button onClick={() => setTab('checkin')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkin' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-in ({stats.checkin})</button>
                             <button onClick={() => setTab('accreditato')} className={`px-6 py-3 whitespace-nowrap ${tab === 'accreditato' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Accreditati ({stats.accreditati})</button>
+                            <button onClick={() => setTab('checkin-giornalieri')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkin-giornalieri' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-in Giornalieri</button>
                             {permissions.canViewEmail && <button onClick={() => setTab('email')} className={`px-6 py-3 whitespace-nowrap ${tab === 'email' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Log Email ({emailLog.length})</button>}
                         </div>
-
                         <div className="p-4 border-b flex gap-4 flex-wrap">
                             <input type="text" placeholder="Cerca..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 px-3 py-2 border rounded-lg min-w-[200px]" />
-                            {permissions.canCheckin && (
-                                <button onClick={startScanner} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 whitespace-nowrap flex items-center gap-2">
-                                    Scansiona QR
-                                </button>
-                            )}
-                            {permissions.canExportCSV && (
-                                <button onClick={() => {
-                                    const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Stato'];
-                                    const rows = participants.map(p => [p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, p.arrivo, p.partenza, p.viaggio, p.status]);
+                            <button onClick={startScanner} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 whitespace-nowrap">Scansiona QR</button>
+{permissions.canExportCSV && (
+    <button onClick={() => {
+        const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo Partecipazione', 'Comitato', 'Regione', 'Data Arrivo', 'Data Partenza', 'Modalità Viaggio', 'Targa', 'Veicolo', 'Status', 'Accreditamento', 'Data Preiscrizione', 'Data Accreditamento'];
+        const rows = participants.map(p => [
+            p.nome, 
+            p.cognome, 
+            p.cf, 
+            p.email, 
+            p.tel, 
+            p.tipoPartecipazione || '', 
+            p.comitato, 
+            p.regione, 
+            p.arrivo || '', 
+            p.partenza || '', 
+            p.viaggio || '', 
+            p.targa || '', 
+            p.veicolo || '', 
+            p.status,
+            p.accreditamento === 1 ? 'Sì' : 'No',
+            p.dataPreiscrizione ? new Date(p.dataPreiscrizione).toLocaleString('it-IT') : '',
+            p.dataAccreditamento ? new Date(p.dataAccreditamento).toLocaleString('it-IT') : ''
+        ]);
                                     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
                                     const blob = new Blob([csv], { type: 'text/csv' });
                                     const url = URL.createObjectURL(blob);
@@ -621,19 +402,24 @@
                                     a.href = url;
                                     a.download = `palasciano_${new Date().toISOString().split('T')[0]}.csv`;
                                     a.click();
-                                }} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap">
-                                    Esporta CSV
-                                </button>
+                                }} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap">Esporta CSV</button>
                             )}
-                        </div>
-
-                        <div className="p-6">
-                            {tab === 'email' ? (
+                        </div><div className="p-6">
+                            {tab === 'checkin-giornalieri' ? (
+                                <CheckinGiornalieriTab participants={filtered} />
+                            ) : tab === 'email' ? (
                                 <div className="space-y-3">
-                                    {emailLog.length === 0 ? <div className="text-center py-12 text-gray-500"><p className="text-4xl mb-2">📧</p><p>Nessuna email</p></div> : emailLog.map(log => (
+                                    {emailLog.length === 0 ? (
+                                        <div className="text-center py-12 text-gray-500"><p className="text-4xl mb-2">📧</p><p>Nessuna email</p></div>
+                                    ) : emailLog.map(log => (
                                         <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
                                             <div className="flex justify-between items-start">
-                                                <div><p className="font-semibold">{log.name}</p><p className="text-sm text-gray-600">{log.recipient}</p><p className="text-sm text-gray-600">{log.subject}</p><p className="text-xs text-gray-400 mt-1">{new Date(log.timestamp).toLocaleString('it-IT')}</p></div>
+                                                <div>
+                                                    <p className="font-semibold">{log.name}</p>
+                                                    <p className="text-sm text-gray-600">{log.recipient}</p>
+                                                    <p className="text-sm text-gray-600">{log.subject}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{new Date(log.timestamp).toLocaleString('it-IT')}</p>
+                                                </div>
                                                 <button onClick={() => setShowQR({ qr: log.qr, name: log.name, recipient: log.recipient })} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">QR</button>
                                             </div>
                                         </div>
@@ -654,23 +440,55 @@
                                                         <p className="text-sm text-gray-600">{p.email} • {p.tel}</p>
                                                         <p className="text-sm text-gray-600">{p.comitato} - {p.regione}</p>
                                                         {p.tipoPartecipazione && <p className="text-sm text-gray-600">Tipo: {p.tipoPartecipazione}</p>}
+                                                        <p className="text-sm text-gray-600">Periodo: {p.arrivo} / {p.partenza}</p>
                                                         <p className="text-sm text-gray-600">Viaggio: {p.viaggio}</p>
-                                                        {p.targa && p.veicolo && (
-                                                            <p className="text-sm text-gray-600">Veicolo: {p.veicolo} - Targa: {p.targa}</p>
-                                                        )}
-                                                        {p.arrivo && p.partenza && (
-                                                            <p className="text-sm text-gray-600">Periodo: {p.arrivo} / {p.partenza}</p>
-                                                        )}
+                                                        {p.targa && p.veicolo && <p className="text-sm text-gray-600">Veicolo: {p.veicolo} - {p.targa}</p>}
                                                         <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${p.status === 'preiscritto' ? 'bg-blue-100 text-blue-800' : p.status === 'checkin' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{p.status}</span>
                                                     </div>
-                                                    <div className="flex flex-col gap-2">
-                                                        <button onClick={() => setShowQR({ qr, name: `${p.nome} ${p.cognome}`, recipient: p.email })} className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm whitespace-nowrap">QR</button>
-                                                        {permissions.canSendEmail && <button onClick={() => onSendEmail(p, 'registration')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap">Email</button>}
-                                                        {permissions.canEdit && <button onClick={() => setEdit(p)} className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm whitespace-nowrap">Modifica</button>}
-                                                        {permissions.canDelete && <button onClick={() => onDelete(p.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm whitespace-nowrap">Elimina</button>}
-                                                        {permissions.canCheckin && p.status === 'preiscritto' && <button onClick={() => onUpdateStatus(p.id, 'checkin')} className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm whitespace-nowrap">Check-in</button>}
-                                                        {permissions.canAccredit && p.status === 'checkin' && <button onClick={() => onUpdateStatus(p.id, 'accreditato')} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm whitespace-nowrap">Accredita</button>}
-                                                    </div>
+<div className="flex flex-col gap-2">
+    <button onClick={() => setShowQR({ qr, name: `${p.nome} ${p.cognome}`, recipient: p.email })} className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm whitespace-nowrap">QR</button>
+    {permissions.canSendEmail && <button onClick={() => onSendEmail(p, 'registration')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap">Email</button>}
+    {permissions.canEdit && <button onClick={() => setEdit(p)} className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm whitespace-nowrap">Modifica</button>}
+    {permissions.canDelete && <button onClick={() => onDelete(p.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm whitespace-nowrap">Elimina</button>}
+    
+    {p.status === 'preiscritto' && <button onClick={async () => {
+        if (confirm(`Effettuare check-in manuale per ${p.nome} ${p.cognome}?`)) {
+            const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
+            const response = await fetch('/.netlify/functions/check-in-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qrData })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
+                await onReload();
+            } else {
+                alert(result.message || 'Errore');
+            }
+        }
+    }} className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm whitespace-nowrap">Check-in</button>}
+    
+    {permissions.canEdit && p.status === 'checkin' && p.accreditamento === 0 && <button onClick={async () => {
+        if (confirm(`Accreditare ${p.nome} ${p.cognome}?`)) {
+            const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
+            const response = await fetch('/.netlify/functions/check-in-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qrData })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
+                await onReload();
+            } else {
+                alert(result.message || 'Errore');
+            }
+        }
+    }} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm whitespace-nowrap">Accredita</button>}
+</div>
                                                 </div>
                                             </div>
                                         );
@@ -689,10 +507,7 @@
                                     <button onClick={stopScanner} className="text-2xl hover:bg-gray-100 rounded px-2">×</button>
                                 </div>
                                 <div id="qr-reader" className="w-full"></div>
-                                <div className="mt-4 text-center">
-                                    <p className="text-gray-600">Inquadra il QR Code del partecipante</p>
-                                    <p className="text-sm text-gray-500 mt-2">Il check-in sara automatico dopo la scansione</p>
-                                </div>
+                                <div className="mt-4 text-center"><p className="text-gray-600">Inquadra il QR Code del partecipante</p></div>
                             </div>
                         </div>
                     )}
@@ -716,43 +531,138 @@
                         </div>
                     )}
 
-                    {edit && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-                            <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-bold">Modifica Partecipante</h3>
-                                    <button onClick={() => setEdit(null)} className="text-2xl">×</button>
-                                </div>
-                                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-sm font-medium mb-1">Nome</label><input type="text" value={edit.nome} onChange={(e) => setEdit({...edit, nome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                        <div><label className="block text-sm font-medium mb-1">Cognome</label><input type="text" value={edit.cognome} onChange={(e) => setEdit({...edit, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                    </div>
-                                    <div><label className="block text-sm font-medium mb-1">CF</label><input type="text" value={edit.cf} onChange={(e) => setEdit({...edit, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-sm font-medium mb-1">Tel</label><input type="tel" value={edit.tel} onChange={(e) => setEdit({...edit, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                        <div><label className="block text-sm font-medium mb-1">Email</label><input type="email" value={edit.email} onChange={(e) => setEdit({...edit, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                    </div>
-                                    <div><label className="block text-sm font-medium mb-1">Comitato</label><input type="text" value={edit.comitato} onChange={(e) => setEdit({...edit, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                    <div><label className="block text-sm font-medium mb-1">Regione</label><input type="text" value={edit.regione} onChange={(e) => setEdit({...edit, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Tipo Partecipazione</label>
-                                        <select value={edit.tipoPartecipazione || ''} onChange={(e) => setEdit({...edit, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
-                                            <option value="">Seleziona tipo</option>
-                                            <option value="Corsista">Corsista</option>
-                                            <option value="Ospite">Ospite</option>
-                                            <option value="Staff">Staff</option>
-                                            <option value="Trainer">Trainer</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 mt-6">
-                                    <button onClick={() => { onUpdate(edit.id, edit); setEdit(null); }} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Salva</button>
-                                    <button onClick={() => setEdit(null)} className="flex-1 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Annulla</button>
-                                </div>
+{edit && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Modifica</h3>
+                <button onClick={() => setEdit(null)} className="text-2xl">×</button>
+            </div>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium mb-1">Nome</label><input type="text" value={edit.nome} onChange={(e) => setEdit({...edit, nome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    <div><label className="block text-sm font-medium mb-1">Cognome</label><input type="text" value={edit.cognome} onChange={(e) => setEdit({...edit, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                </div>
+                <div><label className="block text-sm font-medium mb-1">CF</label><input type="text" value={edit.cf} onChange={(e) => setEdit({...edit, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium mb-1">Tel</label><input type="tel" value={edit.tel} onChange={(e) => setEdit({...edit, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    <div><label className="block text-sm font-medium mb-1">Email</label><input type="email" value={edit.email} onChange={(e) => setEdit({...edit, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                </div>
+                <div><label className="block text-sm font-medium mb-1">Comitato</label><input type="text" value={edit.comitato} onChange={(e) => setEdit({...edit, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                <div><label className="block text-sm font-medium mb-1">Regione</label><input type="text" value={edit.regione} onChange={(e) => setEdit({...edit, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Tipo Partecipazione</label>
+                    <select value={edit.tipoPartecipazione || ''} onChange={(e) => setEdit({...edit, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                        <option value="">Seleziona tipo</option>
+                        <option value="Corsista">Corsista</option>
+                        <option value="Ospite">Ospite</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Trainer">Trainer</option>
+                    </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Data Arrivo</label>
+                        <input type="date" value={edit.arrivo || ''} onChange={(e) => setEdit({...edit, arrivo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Data Partenza</label>
+                        <input type="date" value={edit.partenza || ''} onChange={(e) => setEdit({...edit, partenza: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Modalità Viaggio</label>
+                    <select value={edit.viaggio || ''} onChange={(e) => setEdit({...edit, viaggio: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                        <option value="">Seleziona</option>
+                        <option value="Mezzo CRI">Mezzo CRI</option>
+                        <option value="Mezzi Pubblici">Mezzi Pubblici</option>
+                        <option value="Mezzo Privato">Mezzo Privato</option>
+                    </select>
+                </div>
+                {(edit.viaggio === 'Mezzo CRI' || edit.viaggio === 'Mezzo Privato') && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                        <h4 className="font-medium">Info Veicolo</h4>
+                        <div><label className="block text-sm font-medium mb-1">Targa</label><input type="text" value={edit.targa || ''} onChange={(e) => setEdit({...edit, targa: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                        <div><label className="block text-sm font-medium mb-1">Marca e Modello</label><input type="text" value={edit.veicolo || ''} onChange={(e) => setEdit({...edit, veicolo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    </div>
+                )}
+            </div>
+            <div className="flex gap-2 mt-6">
+                <button onClick={() => { onUpdate(edit.id, edit); setEdit(null); }} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Salva</button>
+                <button onClick={() => setEdit(null)} className="flex-1 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Annulla</button>
+            </div>
+        </div>
+    </div>
+)}
+                </div>
+            );
+        }function CheckinGiornalieriTab({ participants }) {
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            
+            const allDates = [...new Set(participants.flatMap(p => (p.accessi || []).map(a => a.data)))].sort();
+            const participantsWithAccess = participants.filter(p => (p.accessi || []).some(a => a.data === selectedDate));
+
+            return (
+                <div className="space-y-4">
+                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+                        <label className="font-medium">Seleziona Data:</label>
+                        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-3 py-2 border rounded-lg" />
+                        <span className="text-sm text-gray-600">({participantsWithAccess.length} partecipanti previsti)</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="text-left p-3">Nome</th>
+                                    <th className="text-left p-3">Cognome</th>
+                                    <th className="text-left p-3">Tipo</th>
+                                    <th className="text-left p-3">Comitato</th>
+                                    <th className="text-left p-3">Periodo</th>
+                                    <th className="text-center p-3">Status Check-in</th>
+                                    <th className="text-center p-3">Orario</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {participantsWithAccess.map(p => {
+                                    const accessoOggi = (p.accessi || []).find(a => a.data === selectedDate);
+                                    const hasFattoCheckin = accessoOggi && accessoOggi.status === 1;
+                                    return (
+                                        <tr key={p.id} className="border-b hover:bg-gray-50">
+                                            <td className="p-3">{p.nome}</td>
+                                            <td className="p-3">{p.cognome}</td>
+                                            <td className="p-3">{p.tipoPartecipazione || '-'}</td>
+                                            <td className="p-3">{p.comitato}</td>
+                                            <td className="p-3 text-sm">{p.arrivo} / {p.partenza}</td>
+                                            <td className="p-3 text-center">
+                                                {hasFattoCheckin ? (
+                                                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">✓ Presente</span>
+                                                ) : (
+                                                    <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">✗ Assente</span>
+                                                )}
+                                            </td>
+                                            <td className="p-3 text-center text-sm">
+                                                {hasFattoCheckin && accessoOggi.dataCheckin ? new Date(accessoOggi.dataCheckin).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        {participantsWithAccess.length === 0 && (
+                            <div className="text-center py-12 text-gray-500">
+                                <p className="text-4xl mb-2">📅</p>
+                                <p>Nessun partecipante previsto per questa data</p>
                             </div>
+                        )}
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-semibold mb-2">Riepilogo {selectedDate}:</h4>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div><span className="text-gray-600">Previsti:</span><span className="ml-2 font-semibold">{participantsWithAccess.length}</span></div>
+                            <div><span className="text-gray-600">Presenti:</span><span className="ml-2 font-semibold text-green-700">{participantsWithAccess.filter(p => { const acc = (p.accessi || []).find(a => a.data === selectedDate); return acc && acc.status === 1; }).length}</span></div>
+                            <div><span className="text-gray-600">Assenti:</span><span className="ml-2 font-semibold text-red-700">{participantsWithAccess.filter(p => { const acc = (p.accessi || []).find(a => a.data === selectedDate); return !acc || acc.status === 0; }).length}</span></div>
                         </div>
-                    )}
+                    </div>
                 </div>
             );
         }

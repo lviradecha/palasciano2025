@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -56,35 +55,17 @@
             };
 
             const generateQR = (data) => {
-    const tempDiv = document.createElement('div');
-    tempDiv.style.display = 'none';
-    document.body.appendChild(tempDiv);
-    
-    // Dati ridotti per evitare overflow
-    const qrData = {
-        id: data.id,
-        nome: data.nome,
-        cognome: data.cognome,
-        cf: data.cf,
-        targa: data.targa || '',
-        tipo: data.tipoPartecipazione || ''
-    };
-    
-    const qr = new QRCode(tempDiv, {
-        text: JSON.stringify(qrData),
-        width: 300,
-        height: 300,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.L  // L = massima capacità dati
-    });
-    
-    const canvas = tempDiv.querySelector('canvas');
-    const dataUrl = canvas.toDataURL('image/png');
-    document.body.removeChild(tempDiv);
-    
-    return dataUrl;
-};
+                const tempDiv = document.createElement('div');
+                tempDiv.style.display = 'none';
+                document.body.appendChild(tempDiv);
+                
+                const qr = new QRCode(tempDiv, {
+                    text: JSON.stringify(data),
+                    width: 300,
+                    height: 300,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
                 });
                 
                 const canvas = tempDiv.querySelector('canvas');
@@ -631,23 +612,8 @@
                             )}
                             {permissions.canExportCSV && (
                                 <button onClick={() => {
-const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Targa', 'Veicolo', 'Stato'];
-const rows = participants.map(p => [
-    p.nome, 
-    p.cognome, 
-    p.cf, 
-    p.email, 
-    p.tel, 
-    p.tipoPartecipazione || '', 
-    p.comitato, 
-    p.regione, 
-    p.arrivo || '', 
-    p.partenza || '', 
-    p.viaggio, 
-    p.targa || '', 
-    p.veicolo || '', 
-    p.status
-]);
+                                    const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo', 'Comitato', 'Regione', 'Arrivo', 'Partenza', 'Viaggio', 'Stato'];
+                                    const rows = participants.map(p => [p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, p.arrivo, p.partenza, p.viaggio, p.status]);
                                     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
                                     const blob = new Blob([csv], { type: 'text/csv' });
                                     const url = URL.createObjectURL(blob);

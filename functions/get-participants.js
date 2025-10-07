@@ -46,6 +46,7 @@ exports.handler = async (event) => {
             emailSent: p.email_sent,
             dataPreiscrizione: p.data_preiscrizione,
             dataAccreditamento: p.data_accreditamento,
+            dataCheckout: p.data_checkout,
             accessi: p.accessi || []
         }));
 

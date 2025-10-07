@@ -63,28 +63,44 @@ exports.handler = async (event) => {
 
         let newStatus = participant.status;
         let needsEmail = false;
+        let message = '';
 
         // Logica cambio status
         if (participant.status === 'preiscritto') {
+            // Prima volta: preiscritto → checkin
             newStatus = 'checkin';
+            message = `Check-in completato! ${participant.nome} ${participant.cognome}`;
             await sql`UPDATE partecipanti SET status = 'checkin' WHERE id = ${participant.id}`;
+            
         } else if (participant.status === 'checkin' && participant.accreditamento === 0) {
+            // Seconda scansione: checkin → accreditato
             newStatus = 'accreditato';
             needsEmail = true;
+            message = `Accreditamento completato! ${participant.nome} ${participant.cognome}`;
             await sql`
                 UPDATE partecipanti 
                 SET status = 'accreditato', accreditamento = 1, data_accreditamento = NOW() 
                 WHERE id = ${participant.id}
             `;
+            
+        } else if (participant.status === 'checkout') {
+            // Rientro dopo checkout: checkout → accreditato
+            newStatus = 'accreditato';
+            message = `Rientro registrato! ${participant.nome} ${participant.cognome}`;
+            await sql`UPDATE partecipanti SET status = 'accreditato' WHERE id = ${participant.id}`;
+            
+        } else if (participant.status === 'accreditato') {
+            // Già accreditato, solo check-in giornaliero
+            message = accessiOggi[0].status === 1 
+                ? `Check-in giornaliero aggiornato! ${participant.nome} ${participant.cognome}`
+                : `Check-in giornaliero completato! ${participant.nome} ${participant.cognome}`;
         }
 
         return {
             statusCode: 200,
             body: JSON.stringify({ 
                 success: true,
-                message: accessiOggi[0].status === 1 
-                    ? `Check-in aggiornato! ${participant.nome} ${participant.cognome}`
-                    : `Check-in completato! ${participant.nome} ${participant.cognome}`,
+                message: message,
                 participant: {
                     id: participant.id,
                     nome: participant.nome,
@@ -96,7 +112,8 @@ exports.handler = async (event) => {
                     needsEmail: needsEmail
                 },
                 action: participant.status === 'preiscritto' ? 'first_checkin' : 
-                        (participant.status === 'checkin' && participant.accreditamento === 0) ? 'accreditamento' : 'checkin_giornaliero'
+                        (participant.status === 'checkin' && participant.accreditamento === 0) ? 'accreditamento' : 
+                        participant.status === 'checkout' ? 'rientro' : 'checkin_giornaliero'
             })
         };
     } catch (error) {

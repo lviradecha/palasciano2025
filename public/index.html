@@ -96,9 +96,7 @@
                 } catch (error) {
                     console.error('❌ Errore email:', error);
                 }
-            };
-
-            const addParticipant = async (data) => {
+            };const addParticipant = async (data) => {
                 try {
                     const response = await fetch('/.netlify/functions/save-participant', {
                         method: 'POST',
@@ -158,7 +156,8 @@
                 total: participants.length,
                 preiscritti: participants.filter(p => p.status === 'preiscritto').length,
                 checkin: participants.filter(p => p.status === 'checkin').length,
-                accreditati: participants.filter(p => p.status === 'accreditato').length
+                accreditati: participants.filter(p => p.status === 'accreditato').length,
+                checkout: participants.filter(p => p.status === 'checkout').length
             };
 
             return (
@@ -315,86 +314,164 @@
                     html5QrCode.start(
                         { facingMode: "environment" },
                         { fps: 10, qrbox: { width: 250, height: 250 } },
-                        async (decodedText) => {
+                        (decodedText) => {
                             try {
-                                const qrData = JSON.parse(decodedText);
-                                html5QrCode.stop().then(() => { setScannerInstance(null); setShowScanner(false); });
-                                const response = await fetch('/.netlify/functions/check-in-scan', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ qrData })
-                                });
-                                const result = await response.json();
-                                if (result.success) {
-                                    alert(result.message);
-                                    if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
-                                    await onReload();
+                                const data = JSON.parse(decodedText);
+                                if (data.id && data.nome && data.cognome) {
+                                    const participant = participants.find(p => p.id === data.id);
+                                    if (participant) {
+                                        if (participant.status === 'preiscritto') {
+                                            onUpdateStatus(data.id, 'checkin');
+                                            html5QrCode.stop();
+                                            setScannerInstance(null);
+                                            setShowScanner(false);
+                                            alert(`✅ Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}`);
+                                        } else if (participant.status === 'checkin') {
+                                            if (confirm(`${data.nome} ${data.cognome} è già in check-in.\n\nVuoi accreditarlo?`)) {
+                                                onUpdateStatus(data.id, 'accreditato');
+                                                html5QrCode.stop();
+                                                setScannerInstance(null);
+                                                setShowScanner(false);
+                                            }
+                                        } else {
+                                            alert(`✅ ${data.nome} ${data.cognome}\nè già accreditato!`);
+                                        }
+                                    } else {
+                                        alert('❌ Partecipante non trovato!');
+                                    }
                                 } else {
-                                    alert(result.message || 'Errore');
+                                    alert('❌ QR Code non valido!');
                                 }
                             } catch (e) {
-                                alert('Errore lettura QR: ' + e.message);
+                                alert('❌ Errore lettura QR!');
                             }
                         },
                         (errorMessage) => {}
-                    ).catch(err => { alert('Impossibile avviare fotocamera'); });
+                    ).catch(err => {
+                        console.error('Errore fotocamera:', err);
+                        setScannerInstance(null);
+                        setShowScanner(false);
+                        alert('❌ Impossibile avviare la fotocamera.\n\nVerifica di aver concesso i permessi al browser per accedere alla fotocamera.');
+                    });
                 }, 100);
             };
 
             const stopScanner = () => {
                 if (scannerInstance) {
-                    scannerInstance.stop().then(() => { setScannerInstance(null); setShowScanner(false); }).catch(() => { setShowScanner(false); });
+                    scannerInstance.stop().then(() => {
+                        setScannerInstance(null);
+                        setShowScanner(false);
+                    }).catch((err) => {
+                        console.error('Errore stop scanner:', err);
+                        setScannerInstance(null);
+                        setShowScanner(false);
+                    });
                 } else {
                     setShowScanner(false);
                 }
             };
 
-            return (
+            const startScannerCheckout = () => {
+                setShowScanner(true);
+                setTimeout(() => {
+                    const html5QrCode = new Html5Qrcode("qr-reader");
+                    setScannerInstance(html5QrCode);
+                    
+                    html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        async (decodedText) => {
+                            try {
+                                const data = JSON.parse(decodedText);
+                                if (data.id && data.nome && data.cognome) {
+                                    const participant = participants.find(p => p.id === data.id);
+                                    if (participant && participant.status === 'accreditato') {
+                                        const response = await fetch('/.netlify/functions/checkout-scan', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ qrData: data })
+                                        });
+                                        const result = await response.json();
+                                        if (result.success) {
+                                            html5QrCode.stop();
+                                            setScannerInstance(null);
+                                            setShowScanner(false);
+                                            alert(`👋 Check-out completato!\n\n${data.nome} ${data.cognome}`);
+                                            await onReload();
+                                        } else {
+                                            alert(result.message || 'Errore check-out');
+                                        }
+                                    } else {
+                                        alert(`❌ ${data.nome} ${data.cognome}\nnon può fare check-out.\nStatus: ${participant?.status || 'sconosciuto'}`);
+                                    }
+                                }
+                            } catch (e) {
+                                alert('❌ Errore lettura QR!');
+                            }
+                        },
+                        (errorMessage) => {}
+                    ).catch(err => {
+                        console.error('Errore fotocamera:', err);
+                        setScannerInstance(null);
+                        setShowScanner(false);
+                        alert('❌ Impossibile avviare la fotocamera.\n\nVerifica di aver concesso i permessi al browser.');
+                    });
+                }, 100);
+            };
+
+            const onUpdateStatus = async (id, status) => {
+                const qrData = { id };
+                const response = await fetch('/.netlify/functions/check-in-scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ qrData })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
+                    await onReload();
+                }
+            };return (
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <div className="mb-6 flex items-center justify-between">
                         <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getRoleBadge().color}`}>{getRoleBadge().text}</span>
                         <button onClick={onLogout} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">Esci</button>
                     </div>
-                    <div className="grid grid-cols-4 gap-6 mb-8">
+
+                    <div className="grid grid-cols-5 gap-6 mb-8">
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Totale</p><p className="text-3xl font-bold">{stats.total}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Preiscritti</p><p className="text-3xl font-bold text-blue-600">{stats.preiscritti}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Check-in</p><p className="text-3xl font-bold text-orange-600">{stats.checkin}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Accreditati</p><p className="text-3xl font-bold text-green-600">{stats.accreditati}</p></div>
+                        <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Check-out</p><p className="text-3xl font-bold text-purple-600">{stats.checkout}</p></div>
                     </div>
+
                     <div className="bg-white rounded-lg shadow">
                         <div className="flex border-b overflow-x-auto">
                             <button onClick={() => setTab('all')} className={`px-6 py-3 whitespace-nowrap ${tab === 'all' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Tutti ({stats.total})</button>
                             <button onClick={() => setTab('preiscritto')} className={`px-6 py-3 whitespace-nowrap ${tab === 'preiscritto' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Preiscritti ({stats.preiscritti})</button>
                             <button onClick={() => setTab('checkin')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkin' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-in ({stats.checkin})</button>
                             <button onClick={() => setTab('accreditato')} className={`px-6 py-3 whitespace-nowrap ${tab === 'accreditato' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Accreditati ({stats.accreditati})</button>
+                            <button onClick={() => setTab('checkout')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkout' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-out ({stats.checkout})</button>
                             <button onClick={() => setTab('checkin-giornalieri')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkin-giornalieri' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-in Giornalieri</button>
                             {permissions.canViewEmail && <button onClick={() => setTab('email')} className={`px-6 py-3 whitespace-nowrap ${tab === 'email' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Log Email ({emailLog.length})</button>}
                         </div>
+
                         <div className="p-4 border-b flex gap-4 flex-wrap">
                             <input type="text" placeholder="Cerca..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 px-3 py-2 border rounded-lg min-w-[200px]" />
-                            <button onClick={startScanner} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 whitespace-nowrap">Scansiona QR</button>
-{permissions.canExportCSV && (
-    <button onClick={() => {
-        const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo Partecipazione', 'Comitato', 'Regione', 'Data Arrivo', 'Data Partenza', 'Modalità Viaggio', 'Targa', 'Veicolo', 'Status', 'Accreditamento', 'Data Preiscrizione', 'Data Accreditamento'];
-        const rows = participants.map(p => [
-            p.nome, 
-            p.cognome, 
-            p.cf, 
-            p.email, 
-            p.tel, 
-            p.tipoPartecipazione || '', 
-            p.comitato, 
-            p.regione, 
-            p.arrivo || '', 
-            p.partenza || '', 
-            p.viaggio || '', 
-            p.targa || '', 
-            p.veicolo || '', 
-            p.status,
-            p.accreditamento === 1 ? 'Sì' : 'No',
-            p.dataPreiscrizione ? new Date(p.dataPreiscrizione).toLocaleString('it-IT') : '',
-            p.dataAccreditamento ? new Date(p.dataAccreditamento).toLocaleString('it-IT') : ''
-        ]);
+                            <button onClick={startScanner} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 whitespace-nowrap">Scansiona Check-in</button>
+                            <button onClick={startScannerCheckout} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 whitespace-nowrap">Scansiona Check-out</button>
+                            {permissions.canExportCSV && (
+                                <button onClick={() => {
+                                    const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo Partecipazione', 'Comitato', 'Regione', 'Data Arrivo', 'Data Partenza', 'Modalità Viaggio', 'Targa', 'Veicolo', 'Status', 'Accreditamento', 'Data Preiscrizione', 'Data Accreditamento', 'Data Checkout'];
+                                    const rows = participants.map(p => [
+                                        p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, 
+                                        p.arrivo || '', p.partenza || '', p.viaggio || '', p.targa || '', p.veicolo || '', p.status,
+                                        p.accreditamento === 1 ? 'Sì' : 'No',
+                                        p.dataPreiscrizione ? new Date(p.dataPreiscrizione).toLocaleString('it-IT') : '',
+                                        p.dataAccreditamento ? new Date(p.dataAccreditamento).toLocaleString('it-IT') : '',
+                                        p.dataCheckout ? new Date(p.dataCheckout).toLocaleString('it-IT') : ''
+                                    ]);
                                     const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
                                     const blob = new Blob([csv], { type: 'text/csv' });
                                     const url = URL.createObjectURL(blob);
@@ -405,7 +482,42 @@
                                 }} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap">Esporta CSV</button>
                             )}
                         </div><div className="p-6">
-                            {tab === 'checkin-giornalieri' ? (
+                            {tab === 'checkout' ? (
+                                <div className="space-y-4">
+                                    {filtered.filter(p => p.status === 'checkout').map(p => {
+                                        const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
+                                        return (
+                                            <div key={p.id} className="border rounded-lg p-4 bg-purple-50 hover:shadow-md transition">
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <h3 className="font-semibold text-lg">{p.nome} {p.cognome}</h3>
+                                                            {p.emailSent && <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Email</span>}
+                                                            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">Check-out</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-600">{p.email} • {p.tel}</p>
+                                                        <p className="text-sm text-gray-600">{p.comitato} - {p.regione}</p>
+                                                        {p.tipoPartecipazione && <p className="text-sm text-gray-600">Tipo: {p.tipoPartecipazione}</p>}
+                                                        <p className="text-sm text-gray-600">Periodo: {p.arrivo} / {p.partenza}</p>
+                                                        {p.dataCheckout && <p className="text-xs text-gray-500 mt-1">Check-out: {new Date(p.dataCheckout).toLocaleString('it-IT')}</p>}
+                                                    </div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <button onClick={() => setShowQR({ qr, name: `${p.nome} ${p.cognome}`, recipient: p.email })} className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm whitespace-nowrap">QR</button>
+                                                        {permissions.canEdit && <button onClick={() => setEdit(p)} className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm whitespace-nowrap">Modifica</button>}
+                                                        {permissions.canDelete && <button onClick={() => onDelete(p.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm whitespace-nowrap">Elimina</button>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {filtered.filter(p => p.status === 'checkout').length === 0 && (
+                                        <div className="text-center py-12 text-gray-500">
+                                            <p className="text-4xl mb-2">👋</p>
+                                            <p>Nessun check-out ancora</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : tab === 'checkin-giornalieri' ? (
                                 <CheckinGiornalieriTab participants={filtered} />
                             ) : tab === 'email' ? (
                                 <div className="space-y-3">
@@ -425,8 +537,7 @@
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <div className="space-y-4">
+                            ) : (<div className="space-y-4">
                                     {filtered.filter(p => tab === 'all' || p.status === tab).map(p => {
                                         const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
                                         return (
@@ -443,52 +554,70 @@
                                                         <p className="text-sm text-gray-600">Periodo: {p.arrivo} / {p.partenza}</p>
                                                         <p className="text-sm text-gray-600">Viaggio: {p.viaggio}</p>
                                                         {p.targa && p.veicolo && <p className="text-sm text-gray-600">Veicolo: {p.veicolo} - {p.targa}</p>}
-                                                        <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${p.status === 'preiscritto' ? 'bg-blue-100 text-blue-800' : p.status === 'checkin' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>{p.status}</span>
+                                                        <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm ${p.status === 'preiscritto' ? 'bg-blue-100 text-blue-800' : p.status === 'checkin' ? 'bg-orange-100 text-orange-800' : p.status === 'accreditato' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}`}>{p.status}</span>
                                                     </div>
-<div className="flex flex-col gap-2">
-    <button onClick={() => setShowQR({ qr, name: `${p.nome} ${p.cognome}`, recipient: p.email })} className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm whitespace-nowrap">QR</button>
-    {permissions.canSendEmail && <button onClick={() => onSendEmail(p, 'registration')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap">Email</button>}
-    {permissions.canEdit && <button onClick={() => setEdit(p)} className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm whitespace-nowrap">Modifica</button>}
-    {permissions.canDelete && <button onClick={() => onDelete(p.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm whitespace-nowrap">Elimina</button>}
-    
-    {p.status === 'preiscritto' && <button onClick={async () => {
-        if (confirm(`Effettuare check-in manuale per ${p.nome} ${p.cognome}?`)) {
-            const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
-            const response = await fetch('/.netlify/functions/check-in-scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ qrData })
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert(result.message);
-                if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
-                await onReload();
-            } else {
-                alert(result.message || 'Errore');
-            }
-        }
-    }} className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm whitespace-nowrap">Check-in</button>}
-    
-    {permissions.canEdit && p.status === 'checkin' && p.accreditamento === 0 && <button onClick={async () => {
-        if (confirm(`Accreditare ${p.nome} ${p.cognome}?`)) {
-            const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
-            const response = await fetch('/.netlify/functions/check-in-scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ qrData })
-            });
-            const result = await response.json();
-            if (result.success) {
-                alert(result.message);
-                if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
-                await onReload();
-            } else {
-                alert(result.message || 'Errore');
-            }
-        }
-    }} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm whitespace-nowrap">Accredita</button>}
-</div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <button onClick={() => setShowQR({ qr, name: `${p.nome} ${p.cognome}`, recipient: p.email })} className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm whitespace-nowrap">QR</button>
+                                                        {permissions.canSendEmail && <button onClick={() => onSendEmail(p, 'registration')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap">Email</button>}
+                                                        {permissions.canEdit && <button onClick={() => setEdit(p)} className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm whitespace-nowrap">Modifica</button>}
+                                                        {permissions.canDelete && <button onClick={() => onDelete(p.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm whitespace-nowrap">Elimina</button>}
+                                                        
+                                                        {p.status === 'preiscritto' && <button onClick={async () => {
+                                                            if (confirm(`Effettuare check-in manuale per ${p.nome} ${p.cognome}?`)) {
+                                                                const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
+                                                                const response = await fetch('/.netlify/functions/check-in-scan', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ qrData })
+                                                                });
+                                                                const result = await response.json();
+                                                                if (result.success) {
+                                                                    alert(result.message);
+                                                                    if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
+                                                                    await onReload();
+                                                                } else {
+                                                                    alert(result.message || 'Errore');
+                                                                }
+                                                            }
+                                                        }} className="px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm whitespace-nowrap">Check-in</button>}
+                                                        
+                                                        {permissions.canEdit && p.status === 'checkin' && p.accreditamento === 0 && <button onClick={async () => {
+                                                            if (confirm(`Accreditare ${p.nome} ${p.cognome}?`)) {
+                                                                const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
+                                                                const response = await fetch('/.netlify/functions/check-in-scan', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ qrData })
+                                                                });
+                                                                const result = await response.json();
+                                                                if (result.success) {
+                                                                    alert(result.message);
+                                                                    if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
+                                                                    await onReload();
+                                                                } else {
+                                                                    alert(result.message || 'Errore');
+                                                                }
+                                                            }
+                                                        }} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm whitespace-nowrap">Accredita</button>}
+
+                                                        {permissions.canEdit && p.status === 'accreditato' && <button onClick={async () => {
+                                                            if (confirm(`Effettuare check-out per ${p.nome} ${p.cognome}?`)) {
+                                                                const qrData = { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf };
+                                                                const response = await fetch('/.netlify/functions/checkout-scan', {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ qrData })
+                                                                });
+                                                                const result = await response.json();
+                                                                if (result.success) {
+                                                                    alert(result.message);
+                                                                    await onReload();
+                                                                } else {
+                                                                    alert(result.message || 'Errore');
+                                                                }
+                                                            }
+                                                        }} className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm whitespace-nowrap">Check-out</button>}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -497,9 +626,7 @@
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    {showScanner && (
+                    </div>{showScanner && (
                         <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-4 z-50">
                             <div className="bg-white rounded-lg max-w-2xl w-full p-6">
                                 <div className="flex justify-between items-center mb-4">
@@ -531,141 +658,243 @@
                         </div>
                     )}
 
-{edit && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">Modifica</h3>
-                <button onClick={() => setEdit(null)} className="text-2xl">×</button>
-            </div>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium mb-1">Nome</label><input type="text" value={edit.nome} onChange={(e) => setEdit({...edit, nome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                    <div><label className="block text-sm font-medium mb-1">Cognome</label><input type="text" value={edit.cognome} onChange={(e) => setEdit({...edit, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                </div>
-                <div><label className="block text-sm font-medium mb-1">CF</label><input type="text" value={edit.cf} onChange={(e) => setEdit({...edit, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium mb-1">Tel</label><input type="tel" value={edit.tel} onChange={(e) => setEdit({...edit, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                    <div><label className="block text-sm font-medium mb-1">Email</label><input type="email" value={edit.email} onChange={(e) => setEdit({...edit, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                </div>
-                <div><label className="block text-sm font-medium mb-1">Comitato</label><input type="text" value={edit.comitato} onChange={(e) => setEdit({...edit, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                <div><label className="block text-sm font-medium mb-1">Regione</label><input type="text" value={edit.regione} onChange={(e) => setEdit({...edit, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Tipo Partecipazione</label>
-                    <select value={edit.tipoPartecipazione || ''} onChange={(e) => setEdit({...edit, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
-                        <option value="">Seleziona tipo</option>
-                        <option value="Corsista">Corsista</option>
-                        <option value="Ospite">Ospite</option>
-                        <option value="Staff">Staff</option>
-                        <option value="Trainer">Trainer</option>
-                    </select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Data Arrivo</label>
-                        <input type="date" value={edit.arrivo || ''} onChange={(e) => setEdit({...edit, arrivo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Data Partenza</label>
-                        <input type="date" value={edit.partenza || ''} onChange={(e) => setEdit({...edit, partenza: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Modalità Viaggio</label>
-                    <select value={edit.viaggio || ''} onChange={(e) => setEdit({...edit, viaggio: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
-                        <option value="">Seleziona</option>
-                        <option value="Mezzo CRI">Mezzo CRI</option>
-                        <option value="Mezzi Pubblici">Mezzi Pubblici</option>
-                        <option value="Mezzo Privato">Mezzo Privato</option>
-                    </select>
-                </div>
-                {(edit.viaggio === 'Mezzo CRI' || edit.viaggio === 'Mezzo Privato') && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                        <h4 className="font-medium">Info Veicolo</h4>
-                        <div><label className="block text-sm font-medium mb-1">Targa</label><input type="text" value={edit.targa || ''} onChange={(e) => setEdit({...edit, targa: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                        <div><label className="block text-sm font-medium mb-1">Marca e Modello</label><input type="text" value={edit.veicolo || ''} onChange={(e) => setEdit({...edit, veicolo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                    </div>
-                )}
-            </div>
-            <div className="flex gap-2 mt-6">
-                <button onClick={() => { onUpdate(edit.id, edit); setEdit(null); }} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Salva</button>
-                <button onClick={() => setEdit(null)} className="flex-1 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Annulla</button>
-            </div>
-        </div>
-    </div>
-)}
+                    {edit && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                            <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold">Modifica</h3>
+                                    <button onClick={() => setEdit(null)} className="text-2xl">×</button>
+                                </div>
+                                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="block text-sm font-medium mb-1">Nome</label><input type="text" value={edit.nome} onChange={(e) => setEdit({...edit, nome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                        <div><label className="block text-sm font-medium mb-1">Cognome</label><input type="text" value={edit.cognome} onChange={(e) => setEdit({...edit, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    </div>
+                                    <div><label className="block text-sm font-medium mb-1">CF</label><input type="text" value={edit.cf} onChange={(e) => setEdit({...edit, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="block text-sm font-medium mb-1">Tel</label><input type="tel" value={edit.tel} onChange={(e) => setEdit({...edit, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                        <div><label className="block text-sm font-medium mb-1">Email</label><input type="email" value={edit.email} onChange={(e) => setEdit({...edit, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    </div>
+                                    <div><label className="block text-sm font-medium mb-1">Comitato</label><input type="text" value={edit.comitato} onChange={(e) => setEdit({...edit, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    <div><label className="block text-sm font-medium mb-1">Regione</label><input type="text" value={edit.regione} onChange={(e) => setEdit({...edit, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Tipo Partecipazione</label>
+                                        <select value={edit.tipoPartecipazione || ''} onChange={(e) => setEdit({...edit, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                                            <option value="">Seleziona tipo</option>
+                                            <option value="Corsista">Corsista</option>
+                                            <option value="Ospite">Ospite</option>
+                                            <option value="Staff">Staff</option>
+                                            <option value="Trainer">Trainer</option>
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="block text-sm font-medium mb-1">Data Arrivo</label><input type="date" value={edit.arrivo || ''} onChange={(e) => setEdit({...edit, arrivo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                        <div><label className="block text-sm font-medium mb-1">Data Partenza</label><input type="date" value={edit.partenza || ''} onChange={(e) => setEdit({...edit, partenza: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Modalità Viaggio</label>
+                                        <select value={edit.viaggio || ''} onChange={(e) => setEdit({...edit, viaggio: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                                            <option value="">Seleziona</option>
+                                            <option value="Mezzo CRI">Mezzo CRI</option>
+                                            <option value="Mezzi Pubblici">Mezzi Pubblici</option>
+                                            <option value="Mezzo Privato">Mezzo Privato</option>
+                                        </select>
+                                    </div>
+                                    {(edit.viaggio === 'Mezzo CRI' || edit.viaggio === 'Mezzo Privato') && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                                            <h4 className="font-medium">Info Veicolo</h4>
+                                            <div><label className="block text-sm font-medium mb-1">Targa</label><input type="text" value={edit.targa || ''} onChange={(e) => setEdit({...edit, targa: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                            <div><label className="block text-sm font-medium mb-1">Marca e Modello</label><input type="text" value={edit.veicolo || ''} onChange={(e) => setEdit({...edit, veicolo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex gap-2 mt-6">
+                                    <button onClick={() => { onUpdate(edit.id, edit); setEdit(null); }} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Salva</button>
+                                    <button onClick={() => setEdit(null)} className="flex-1 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Annulla</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
-        }function CheckinGiornalieriTab({ participants }) {
-            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-            
-            const allDates = [...new Set(participants.flatMap(p => (p.accessi || []).map(a => a.data)))].sort();
-            const participantsWithAccess = participants.filter(p => (p.accessi || []).some(a => a.data === selectedDate));
+} function CheckinGiornalieriTab({ participants }) {
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    
+    // Partecipanti con accesso previsto per oggi
+    const participantsWithAccess = participants.filter(p => (p.accessi || []).some(a => a.data === selectedDate));
+    
+    // Checkout del giorno selezionato
+    const checkoutOggi = participants.filter(p => {
+        if (!p.dataCheckout) return false;
+        const checkoutDate = new Date(p.dataCheckout).toISOString().split('T')[0];
+        return checkoutDate === selectedDate;
+    });
 
-            return (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
-                        <label className="font-medium">Seleziona Data:</label>
-                        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-3 py-2 border rounded-lg" />
-                        <span className="text-sm text-gray-600">({participantsWithAccess.length} partecipanti previsti)</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="text-left p-3">Nome</th>
-                                    <th className="text-left p-3">Cognome</th>
-                                    <th className="text-left p-3">Tipo</th>
-                                    <th className="text-left p-3">Comitato</th>
-                                    <th className="text-left p-3">Periodo</th>
-                                    <th className="text-center p-3">Status Check-in</th>
-                                    <th className="text-center p-3">Orario</th>
+    // Unifica check-in e checkout in un'unica lista
+    const movimentiGiornata = [];
+
+    // Aggiungi check-in
+    participantsWithAccess.forEach(p => {
+        const accessoOggi = (p.accessi || []).find(a => a.data === selectedDate);
+        movimentiGiornata.push({
+            id: p.id,
+            nome: p.nome,
+            cognome: p.cognome,
+            tipo: p.tipoPartecipazione || '-',
+            comitato: p.comitato,
+            periodo: `${p.arrivo} / ${p.partenza}`,
+            movimento: 'checkin',
+            status: accessoOggi && accessoOggi.status === 1 ? 'presente' : 'assente',
+            orario: accessoOggi && accessoOggi.dataCheckin ? new Date(accessoOggi.dataCheckin) : null
+        });
+    });
+
+    // Aggiungi checkout
+    checkoutOggi.forEach(p => {
+        movimentiGiornata.push({
+            id: `checkout-${p.id}`,
+            nome: p.nome,
+            cognome: p.cognome,
+            tipo: p.tipoPartecipazione || '-',
+            comitato: p.comitato,
+            periodo: `${p.arrivo} / ${p.partenza}`,
+            movimento: 'checkout',
+            status: 'uscito',
+            orario: new Date(p.dataCheckout)
+        });
+    });
+
+    // Ordina per orario (più recenti prima)
+    movimentiGiornata.sort((a, b) => {
+        if (!a.orario && !b.orario) return 0;
+        if (!a.orario) return 1;
+        if (!b.orario) return -1;
+        return b.orario - a.orario;
+    });
+
+    const presenti = participantsWithAccess.filter(p => {
+        const acc = (p.accessi || []).find(a => a.data === selectedDate);
+        return acc && acc.status === 1;
+    }).length;
+
+    const assenti = participantsWithAccess.length - presenti;
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+                <label className="font-medium">Seleziona Data:</label>
+                <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-3 py-2 border rounded-lg" />
+            </div>
+
+            {/* TABELLA UNIFICATA */}
+            <div className="bg-white border rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b px-4 py-3">
+                    <h3 className="font-semibold text-gray-900">📋 Riepilogo Movimenti Giornata</h3>
+                    <p className="text-sm text-gray-600 mt-1">{movimentiGiornata.length} movimenti totali</p>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="text-left p-3">Nome</th>
+                                <th className="text-left p-3">Cognome</th>
+                                <th className="text-left p-3">Tipo</th>
+                                <th className="text-left p-3">Comitato</th>
+                                <th className="text-left p-3">Periodo</th>
+                                <th className="text-center p-3">Movimento</th>
+                                <th className="text-center p-3">Status</th>
+                                <th className="text-center p-3">Orario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {movimentiGiornata.map(m => (
+                                <tr key={m.id} className={`border-b hover:bg-gray-50 ${m.movimento === 'checkout' ? 'bg-purple-25' : ''}`}>
+                                    <td className="p-3 font-medium">{m.nome}</td>
+                                    <td className="p-3 font-medium">{m.cognome}</td>
+                                    <td className="p-3 text-sm">{m.tipo}</td>
+                                    <td className="p-3 text-sm">{m.comitato}</td>
+                                    <td className="p-3 text-xs text-gray-600">{m.periodo}</td>
+                                    <td className="p-3 text-center">
+                                        {m.movimento === 'checkin' ? (
+                                            <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
+                                                ➜ Check-in
+                                            </span>
+                                        ) : (
+                                            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                                                ← Check-out
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        {m.status === 'presente' && (
+                                            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">✓ Presente</span>
+                                        )}
+                                        {m.status === 'assente' && (
+                                            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">✗ Assente</span>
+                                        )}
+                                        {m.status === 'uscito' && (
+                                            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">👋 Uscito</span>
+                                        )}
+                                    </td>
+                                    <td className="p-3 text-center">
+                                        {m.orario ? (
+                                            <span className="font-semibold text-sm">
+                                                {m.orario.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' })}
+                                            </span>
+                                        ) : (
+                                            <span className="text-gray-400 text-sm">-</span>
+                                        )}
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {participantsWithAccess.map(p => {
-                                    const accessoOggi = (p.accessi || []).find(a => a.data === selectedDate);
-                                    const hasFattoCheckin = accessoOggi && accessoOggi.status === 1;
-                                    return (
-                                        <tr key={p.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-3">{p.nome}</td>
-                                            <td className="p-3">{p.cognome}</td>
-                                            <td className="p-3">{p.tipoPartecipazione || '-'}</td>
-                                            <td className="p-3">{p.comitato}</td>
-                                            <td className="p-3 text-sm">{p.arrivo} / {p.partenza}</td>
-                                            <td className="p-3 text-center">
-                                                {hasFattoCheckin ? (
-                                                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">✓ Presente</span>
-                                                ) : (
-                                                    <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">✗ Assente</span>
-                                                )}
-                                            </td>
-                                            <td className="p-3 text-center text-sm">
-                                                {hasFattoCheckin && accessoOggi.dataCheckin ? new Date(accessoOggi.dataCheckin).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                        {participantsWithAccess.length === 0 && (
-                            <div className="text-center py-12 text-gray-500">
-                                <p className="text-4xl mb-2">📅</p>
-                                <p>Nessun partecipante previsto per questa data</p>
-                            </div>
-                        )}
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="font-semibold mb-2">Riepilogo {selectedDate}:</h4>
-                        <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div><span className="text-gray-600">Previsti:</span><span className="ml-2 font-semibold">{participantsWithAccess.length}</span></div>
-                            <div><span className="text-gray-600">Presenti:</span><span className="ml-2 font-semibold text-green-700">{participantsWithAccess.filter(p => { const acc = (p.accessi || []).find(a => a.data === selectedDate); return acc && acc.status === 1; }).length}</span></div>
-                            <div><span className="text-gray-600">Assenti:</span><span className="ml-2 font-semibold text-red-700">{participantsWithAccess.filter(p => { const acc = (p.accessi || []).find(a => a.data === selectedDate); return !acc || acc.status === 0; }).length}</span></div>
+                            ))}
+                        </tbody>
+                    </table>
+                    {movimentiGiornata.length === 0 && (
+                        <div className="text-center py-12 text-gray-500">
+                            <p className="text-4xl mb-2">📅</p>
+                            <p>Nessun movimento registrato per questa data</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* RIEPILOGO STATISTICHE */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-green-900 mb-3">✅ Check-in</h4>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-green-700">Previsti:</span>
+                            <span className="font-bold text-green-900">{participantsWithAccess.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-green-700">Presenti:</span>
+                            <span className="font-bold text-green-900">{presenti}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-green-700">Assenti:</span>
+                            <span className="font-bold text-red-700">{assenti}</span>
                         </div>
                     </div>
                 </div>
-            );
-        }
+
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-purple-900 mb-3">👋 Check-out</h4>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-purple-700">Usciti oggi:</span>
+                            <span className="font-bold text-purple-900">{checkoutOggi.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-purple-700">Ancora presenti:</span>
+                            <span className="font-bold text-purple-900">{presenti - checkoutOggi.length}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>

@@ -1,125 +1,189 @@
-const { neon } = require('@neondatabase/serverless');
+const { sql } = require('@neondatabase/serverless');
 
 exports.handler = async (event) => {
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Content-Type': 'application/json'
+    };
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
+    }
+
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ success: false, error: 'Method not allowed' })
+        };
     }
 
     try {
-        const { qrData } = JSON.parse(event.body);
-        const sql = neon(process.env.NETLIFY_DATABASE_URL);
+        const { qrData, staffUser } = JSON.parse(event.body);
 
-        // Trova partecipante
-        const participants = await sql`
-            SELECT * FROM partecipanti 
-            WHERE id = ${qrData.id} OR (nome = ${qrData.nome} AND cognome = ${qrData.cognome} AND cf = ${qrData.cf})
-            LIMIT 1
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+        // Recupera partecipante tramite QR data
+        const [participant] = await sql`
+            SELECT * FROM partecipanti WHERE qrcode_data = ${qrData}
         `;
 
-        if (participants.length === 0) {
+        if (!participant) {
             return {
                 statusCode: 404,
-                body: JSON.stringify({ 
-                    success: false, 
-                    message: 'Partecipante non trovato' 
-                })
+                headers,
+                body: JSON.stringify({ success: false, message: 'Partecipante non trovato' })
             };
         }
 
-        const participant = participants[0];
-        const today = new Date().toISOString().split('T')[0];
-
-        // Verifica se ha accesso per oggi
-        const accessiOggi = await sql`
-            SELECT * FROM accessi 
-            WHERE id_partecipante = ${participant.id} 
-            AND data_accesso_richiesto = ${today}
-        `;
-
-        if (accessiOggi.length === 0) {
-            // Fuori periodo
-            return {
-                statusCode: 403,
-                body: JSON.stringify({ 
-                    success: false, 
-                    message: `Accesso negato - Periodo di permanenza: ${participant.arrivo} / ${participant.partenza}`,
-                    participant: {
-                        nome: participant.nome,
-                        cognome: participant.cognome,
-                        arrivo: participant.arrivo,
-                        partenza: participant.partenza
-                    }
-                })
-            };
-        }
-
-        // Registra/aggiorna check-in
-        await sql`
-            UPDATE accessi 
-            SET status = 1, data_checkin = NOW() 
-            WHERE id_partecipante = ${participant.id} 
-            AND data_accesso_richiesto = ${today}
-        `;
-
-        let newStatus = participant.status;
-        let needsEmail = false;
+        let action = null;
         let message = '';
+        let needsEmail = false;
 
-        // Logica cambio status
+        // 1️⃣ PRIMO CHECK-IN (da preiscritto → checkin)
         if (participant.status === 'preiscritto') {
-            // Prima volta: preiscritto → checkin
-            newStatus = 'checkin';
-            message = `Check-in completato! ${participant.nome} ${participant.cognome}`;
-            await sql`UPDATE partecipanti SET status = 'checkin' WHERE id = ${participant.id}`;
-            
-        } else if (participant.status === 'checkin' && participant.accreditamento === 0) {
-            // Seconda scansione: checkin → accreditato
-            newStatus = 'accreditato';
-            needsEmail = true;
-            message = `Accreditamento completato! ${participant.nome} ${participant.cognome}`;
+            await sql`
+                UPDATE partecipanti SET status = 'checkin' 
+                WHERE id = ${participant.id}
+            `;
+
+            await sql`
+                INSERT INTO accessi (id_partecipante, data_accesso_richiesto, status, data_checkin)
+                VALUES (${participant.id}, ${today}, 1, NOW())
+                ON CONFLICT (id_partecipante, data_accesso_richiesto) 
+                DO UPDATE SET status = 1, data_checkin = NOW()
+            `;
+
+            // Audit log
+            if (staffUser) {
+                await sql`
+                    INSERT INTO audit_log (
+                        user_id, username, nome_completo, azione, 
+                        entita, entita_id, dettagli, ip_address
+                    ) VALUES (
+                        ${staffUser.id},
+                        ${staffUser.username},
+                        ${staffUser.nome} || ' ' || ${staffUser.cognome},
+                        'CHECKIN_FIRST',
+                        'participant',
+                        ${participant.id},
+                        ${JSON.stringify({
+                            participant_nome: participant.nome,
+                            participant_cognome: participant.cognome,
+                            participant_cf: participant.cf,
+                            old_status: 'preiscritto',
+                            new_status: 'checkin'
+                        })},
+                        ${event.headers['x-forwarded-for'] || 'unknown'}
+                    )
+                `;
+            }
+
+            action = 'first_checkin';
+            message = `✅ Check-in completato! ${participant.nome} ${participant.cognome}`;
+        }
+
+        // 2️⃣ ACCREDITAMENTO (da checkin → accreditato)
+        else if (participant.status === 'checkin' && participant.accreditamento === 0) {
             await sql`
                 UPDATE partecipanti 
                 SET status = 'accreditato', accreditamento = 1, data_accreditamento = NOW() 
                 WHERE id = ${participant.id}
             `;
-            
-        } else if (participant.status === 'checkout') {
-            // Rientro dopo checkout: checkout → accreditato
-            newStatus = 'accreditato';
-            message = `Rientro registrato! ${participant.nome} ${participant.cognome}`;
-            await sql`UPDATE partecipanti SET status = 'accreditato' WHERE id = ${participant.id}`;
-            
-        } else if (participant.status === 'accreditato') {
-            // Già accreditato, solo check-in giornaliero
-            message = accessiOggi[0].status === 1 
-                ? `Check-in giornaliero aggiornato! ${participant.nome} ${participant.cognome}`
-                : `Check-in giornaliero completato! ${participant.nome} ${participant.cognome}`;
+
+            // Audit log
+            if (staffUser) {
+                await sql`
+                    INSERT INTO audit_log (
+                        user_id, username, nome_completo, azione, 
+                        entita, entita_id, dettagli, ip_address
+                    ) VALUES (
+                        ${staffUser.id},
+                        ${staffUser.username},
+                        ${staffUser.nome} || ' ' || ${staffUser.cognome},
+                        'ACCREDITAMENTO',
+                        'participant',
+                        ${participant.id},
+                        ${JSON.stringify({
+                            participant_nome: participant.nome,
+                            participant_cognome: participant.cognome,
+                            participant_cf: participant.cf,
+                            old_status: 'checkin',
+                            new_status: 'accreditato'
+                        })},
+                        ${event.headers['x-forwarded-for'] || 'unknown'}
+                    )
+                `;
+            }
+
+            action = 'accreditamento';
+            needsEmail = true;
+            message = `🎉 Accreditamento completato! ${participant.nome} ${participant.cognome}`;
+        }
+
+        // 3️⃣ CHECK-IN GIORNALIERO
+        else if (participant.status === 'accreditato') {
+            await sql`
+                INSERT INTO accessi (id_partecipante, data_accesso_richiesto, status, data_checkin)
+                VALUES (${participant.id}, ${today}, 1, NOW())
+                ON CONFLICT (id_partecipante, data_accesso_richiesto) 
+                DO UPDATE SET status = 1, data_checkin = NOW()
+            `;
+
+            // Audit log
+            if (staffUser) {
+                await sql`
+                    INSERT INTO audit_log (
+                        user_id, username, nome_completo, azione, 
+                        entita, entita_id, dettagli, ip_address
+                    ) VALUES (
+                        ${staffUser.id},
+                        ${staffUser.username},
+                        ${staffUser.nome} || ' ' || ${staffUser.cognome},
+                        'CHECKIN_DAILY',
+                        'participant',
+                        ${participant.id},
+                        ${JSON.stringify({
+                            participant_nome: participant.nome,
+                            participant_cognome: participant.cognome,
+                            data: today
+                        })},
+                        ${event.headers['x-forwarded-for'] || 'unknown'}
+                    )
+                `;
+            }
+
+            action = 'checkin_giornaliero';
+            message = `✅ Check-in giornaliero registrato! ${participant.nome} ${participant.cognome}`;
+        }
+
+        // Nessuna azione possibile
+        else {
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ success: false, message: '⚠️ Nessuna azione eseguita' })
+            };
         }
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ 
+            headers,
+            body: JSON.stringify({
                 success: true,
-                message: message,
-                participant: {
-                    id: participant.id,
-                    nome: participant.nome,
-                    cognome: participant.cognome,
-                    cf: participant.cf,
-                    email: participant.email,
-                    status: newStatus,
-                    accreditamento: newStatus === 'accreditato' ? 1 : participant.accreditamento,
-                    needsEmail: needsEmail
-                },
-                action: participant.status === 'preiscritto' ? 'first_checkin' : 
-                        (participant.status === 'checkin' && participant.accreditamento === 0) ? 'accreditamento' : 
-                        participant.status === 'checkout' ? 'rientro' : 'checkin_giornaliero'
+                action,
+                message,
+                participant,
+                needsEmail
             })
         };
+
     } catch (error) {
-        console.error('Errore check-in-scan:', error);
+        console.error('❌ Errore nel check-in:', error);
         return {
             statusCode: 500,
+            headers,
             body: JSON.stringify({ success: false, error: error.message })
         };
     }

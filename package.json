@@ -1,11 +1,20 @@
 {
-  "name": "palasciano2025-backend",
+  "name": "palasciano-2025",
   "version": "1.0.0",
-  "description": "Backend Netlify Functions per Palasciano 2025",
+  "description": "Sistema Gestione Campo Palasciano Red Cross Camp Napoli 2025",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev"
+  },
   "dependencies": {
-    "mailgun.js": "^9.3.0",
+    "@neondatabase/serverless": "^0.9.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.2.3",
     "form-data": "^4.0.0",
-    "qrcode": "^1.5.3",
-    "@neondatabase/serverless": "^0.9.0"
+    "mailgun.js": "^9.2.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
   }
 }

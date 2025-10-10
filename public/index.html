@@ -214,11 +214,450 @@
             `);
             printWindow.document.close();
             setTimeout(() => printWindow.print(), 250);
-        };// ==================== COMPONENTE APP ====================
+};// ==================== COMPONENTE CAMBIO PASSWORD ====================
+
+        function ChangePasswordModal({ user, onSuccess, onLogout }) {
+            const [formData, setFormData] = useState({
+                newPassword: '',
+                confirmPassword: ''
+            });
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+
+                if (formData.newPassword.length < 8) {
+                    setError('La password deve essere almeno 8 caratteri');
+                    return;
+                }
+
+                if (formData.newPassword !== formData.confirmPassword) {
+                    setError('Le password non corrispondono');
+                    return;
+                }
+
+                setLoading(true);
+
+                try {
+                    const response = await fetch('/.netlify/functions/change-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: user.id,
+                            newPassword: formData.newPassword
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('✅ Password cambiata con successo!');
+                        onSuccess();
+                    } else {
+                        setError(result.error || 'Errore nel cambio password');
+                    }
+                } catch (error) {
+                    setError('Errore di connessione');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-3xl">🔐</span>
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Cambio Password Obbligatorio</h2>
+                            <p className="text-gray-600">
+                                Ciao <strong>{user.nome}</strong>, è il tuo primo accesso.<br/>
+                                Per motivi di sicurezza, devi cambiare la password.
+                            </p>
+                        </div>
+
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                ❌ {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Nuova Password</label>
+                                <input
+                                    type="password"
+                                    required
+                                    minLength="8"
+                                    value={formData.newPassword}
+                                    onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Minimo 8 caratteri"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">La password deve contenere almeno 8 caratteri</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Conferma Password</label>
+                                <input
+                                    type="password"
+                                    required
+                                    value={formData.confirmPassword}
+                                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Ripeti la password"
+                                />
+                            </div>
+
+                            <div className="pt-4 space-y-3">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 font-semibold"
+                                >
+                                    {loading ? '⏳ Salvataggio...' : '💾 Cambia Password'}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={onLogout}
+                                    disabled={loading}
+                                    className="w-full px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    ← Esci
+                                </button>
+                            </div>
+                        </form>
+
+                        <div className="mt-6 pt-6 border-t">
+                            <p className="text-xs text-gray-500 text-center">
+                                💡 Scegli una password sicura che non hai usato altrove
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }// ==================== DASHBOARD PUBBLICA ====================
+
+function PublicDashboard() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [countdown, setCountdown] = useState(30);
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Carica statistiche
+    const loadStats = async () => {
+        try {
+            const response = await fetch('/.netlify/functions/get-dashboard-stats');
+            const result = await response.json();
+            if (result.success) {
+                setStats(result.stats);
+            }
+        } catch (error) {
+            console.error('Errore caricamento stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Carica al mount e ogni 30 secondi
+    useEffect(() => {
+        loadStats();
+        const interval = setInterval(() => {
+            loadStats();
+            setCountdown(30);
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Countdown
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCountdown(prev => prev > 0 ? prev - 1 : 30);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Orologio
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
+                    <p className="text-white text-xl">Caricamento dashboard...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!stats) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
+                <div className="text-white text-xl">Errore caricamento dati</div>
+            </div>
+        );
+    }
+
+    const percentualeArriviOggi = stats.arriviOggi.previsti > 0 
+        ? Math.round((stats.arriviOggi.arrivati / stats.arriviOggi.previsti) * 100) 
+        : 0;
+
+    const percentualePresenza = stats.generali.totale > 0
+        ? Math.round((stats.presentiOggi / stats.generali.totale) * 100)
+        : 0;
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-6">
+            {/* HEADER */}
+            <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+                            🏥 Palasciano Red Cross Camp Napoli 2025
+                        </h1>
+                        <p className="text-xl text-gray-600 mt-2">Dashboard Live - Monitoraggio in Tempo Reale</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-3xl font-bold text-gray-900">
+                            {currentTime.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </p>
+                        <p className="text-lg text-gray-600">
+                            {currentTime.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* STATISTICHE PRINCIPALI */}
+            <div className="grid grid-cols-6 gap-6 mb-6">
+                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-indigo-500">
+                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">👥 Totale</p>
+                    <p className="text-5xl font-bold text-gray-900">{stats.generali.totale}</p>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-blue-500">
+                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">📝 Preiscritti</p>
+                    <p className="text-5xl font-bold text-blue-600">{stats.generali.preiscritti}</p>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-orange-500">
+                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">🚗 Check-in</p>
+                    <p className="text-5xl font-bold text-orange-600">{stats.generali.checkin}</p>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-green-500">
+                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">🎉 Accreditati</p>
+                    <p className="text-5xl font-bold text-green-600">{stats.generali.accreditati}</p>
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-purple-500">
+                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">👋 Check-out</p>
+                    <p className="text-5xl font-bold text-purple-600">{stats.generali.checkout}</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-xl p-6">
+                    <p className="text-white text-sm font-semibold uppercase mb-2">✅ Presenti Oggi</p>
+                    <p className="text-5xl font-bold text-white">{stats.presentiOggi}</p>
+                    <p className="text-emerald-100 text-sm mt-1">{percentualePresenza}% del totale</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-6">
+                {/* ARRIVI PREVISTI OGGI */}
+                <div className="bg-white rounded-xl shadow-xl p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span>📊</span> Arrivi Previsti Oggi
+                    </h3>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Previsti:</span>
+                            <span className="text-3xl font-bold text-gray-900">{stats.arriviOggi.previsti}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Arrivati:</span>
+                            <span className="text-3xl font-bold text-green-600">{stats.arriviOggi.arrivati}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">In attesa:</span>
+                            <span className="text-3xl font-bold text-orange-600">{stats.arriviOggi.previsti - stats.arriviOggi.arrivati}</span>
+                        </div>
+                        <div className="mt-4">
+                            <div className="flex justify-between text-sm mb-2">
+                                <span className="font-semibold">Percentuale arrivi</span>
+                                <span className="font-bold">{percentualeArriviOggi}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                                <div 
+                                    className="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full transition-all duration-500"
+                                    style={{ width: `${percentualeArriviOggi}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* PRESENZE PER GIORNO */}
+                <div className="bg-white rounded-xl shadow-xl p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span>📈</span> Presenze per Giorno
+                    </h3>
+                    <div className="space-y-3">
+                        {stats.presenzeGiornaliere.map(giorno => {
+                            const percentuale = giorno.previsti > 0 ? Math.round((giorno.presenti / giorno.previsti) * 100) : 0;
+                            const dataObj = new Date(giorno.data);
+                            const isToday = giorno.data === new Date().toISOString().split('T')[0];
+                            
+                            return (
+                                <div key={giorno.data} className={`${isToday ? 'bg-indigo-50 border-2 border-indigo-300 rounded-lg p-3' : ''}`}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className={`font-semibold ${isToday ? 'text-indigo-700' : 'text-gray-700'}`}>
+                                            {dataObj.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                            {isToday && ' (Oggi)'}
+                                        </span>
+                                        <span className="font-bold text-lg">
+                                            {giorno.presenti} / {giorno.previsti}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                        <div 
+                                            className={`h-2 rounded-full transition-all ${isToday ? 'bg-gradient-to-r from-indigo-400 to-indigo-600' : 'bg-gradient-to-r from-blue-400 to-blue-600'}`}
+                                            style={{ width: `${percentuale}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-6 mb-6">
+                {/* PROVENIENZA */}
+                <div className="bg-white rounded-xl shadow-xl p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span>🏛️</span> Provenienza
+                    </h3>
+                    <div className="space-y-3">
+                        {stats.perRegione.slice(0, 8).map((reg, index) => {
+                            const percentuale = Math.round((reg.totale / stats.generali.totale) * 100);
+                            return (
+                                <div key={index}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-gray-700 font-medium">{reg.regione || 'Non specificato'}</span>
+                                        <span className="font-bold">{reg.totale} ({percentuale}%)</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div 
+                                            className="bg-gradient-to-r from-purple-400 to-pink-600 h-2 rounded-full"
+                                            style={{ width: `${percentuale}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* TIPO PARTECIPAZIONE */}
+                <div className="bg-white rounded-xl shadow-xl p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span>👥</span> Tipo Partecipazione
+                    </h3>
+                    <div className="space-y-4">
+                        {stats.perTipo.map((tipo, index) => {
+                            const percentuale = Math.round((tipo.totale / stats.generali.totale) * 100);
+                            const colori = {
+                                'Corsista': 'from-blue-400 to-blue-600',
+                                'Staff': 'from-green-400 to-green-600',
+                                'Trainer': 'from-orange-400 to-orange-600',
+                                'Ospite': 'from-purple-400 to-purple-600'
+                            };
+                            return (
+                                <div key={index}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-gray-700 font-medium">{tipo.tipo_partecipazione || 'Non specificato'}</span>
+                                        <span className="font-bold">{tipo.totale} ({percentuale}%)</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div 
+                                            className={`bg-gradient-to-r ${colori[tipo.tipo_partecipazione] || 'from-gray-400 to-gray-600'} h-2 rounded-full`}
+                                            style={{ width: `${percentuale}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* MODALITÀ VIAGGIO */}
+                <div className="bg-white rounded-xl shadow-xl p-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <span>🚗</span> Modalità Arrivo
+                    </h3>
+                    <div className="space-y-4">
+                        {stats.perViaggio.map((viaggio, index) => {
+                            const percentuale = Math.round((viaggio.totale / stats.generali.totale) * 100);
+                            const colori = {
+                                'Mezzo CRI': 'from-red-400 to-red-600',
+                                'Mezzi Pubblici': 'from-blue-400 to-blue-600',
+                                'Mezzo Privato': 'from-green-400 to-green-600'
+                            };
+                            return (
+                                <div key={index}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-gray-700 font-medium">{viaggio.viaggio}</span>
+                                        <span className="font-bold">{viaggio.totale} ({percentuale}%)</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div 
+                                            className={`bg-gradient-to-r ${colori[viaggio.viaggio] || 'from-gray-400 to-gray-600'} h-2 rounded-full`}
+                                            style={{ width: `${percentuale}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="bg-white rounded-xl shadow-xl p-4">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-gray-600">
+                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="font-medium">Dashboard Live</span>
+                    </div>
+                    <div className="text-gray-600">
+                        <span className="font-medium">⏱️ Ultimo aggiornamento:</span> {new Date().toLocaleTimeString('it-IT')}
+                    </div>
+                    <div className="text-gray-600">
+                        <span className="font-medium">🔄 Prossimo aggiornamento tra:</span> <span className="font-bold text-indigo-600">{countdown}s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}        // ==================== COMPONENTE APP ====================
 
         function App() {
-            const [view, setView] = useState('home');
-            const [participants, setParticipants] = useState([]);
+    // ✅ Leggi parametro URL per dashboard pubblica
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialView = urlParams.get('view') === 'dashboard-public' ? 'dashboard-public' : 'home';
+    
+    const [view, setView] = useState(initialView);
+    const [participants, setParticipants] = useState([]);
             const [emailLog, setEmailLog] = useState([]);
             const [userRole, setUserRole] = useState(null);
             const [currentUser, setCurrentUser] = useState(null);
@@ -314,43 +753,91 @@
             };
 
             const addParticipant = async (data) => {
-                try {
-                    const response = await fetch('/.netlify/functions/save-participant', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                    const result = await response.json();
-                    if (result.success) {
-                        const newP = { id: result.id, ...data };
-                        await sendEmail(newP, 'registration');
-                        await fetch('/.netlify/functions/update-participant', {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ ...newP, emailSent: true })
-                        });
-                        showToast('✅ Preiscrizione completata! Email inviata');
-                    }
-                } catch (error) {
-                    showToast('❌ Errore registrazione');
-                }
-            };
+    try {
+        showToast('⏳ Registrazione in corso...');
+        
+        // ✅ Chiama la nuova function ottimizzata
+        const response = await fetch('/.netlify/functions/register-participant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('✅ Preiscrizione completata! Riceverai l\'email a breve.');
+        } else {
+            showToast('❌ ' + (result.error || 'Errore durante la registrazione'));
+        }
+    } catch (error) {
+        console.error('Errore registrazione:', error);
+        showToast('❌ Errore di connessione. Riprova.');
+    }
+};
 
             const updateParticipant = async (id, data) => {
-                try {
-                    const response = await fetch('/.netlify/functions/update-participant', {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ...data, id })
-                    });
-                    if ((await response.json()).success) {
-                        await loadParticipants();
-                        showToast('✏️ Aggiornato');
+    try {
+        // Trova partecipante originale per confrontare le modifiche
+        const original = participants.find(p => p.id === id);
+        
+        if (!original) {
+            showToast('❌ Partecipante non trovato');
+            return;
+        }
+        
+        // Verifica se sono cambiate date o dati critici
+        const dateChanged = original.arrivo !== data.arrivo || original.partenza !== data.partenza;
+        const datiImportantiCambiati = 
+            original.nome !== data.nome || 
+            original.cognome !== data.cognome || 
+            original.cf !== data.cf ||
+            original.email !== data.email;
+        
+        // Aggiorna nel database
+        const response = await fetch('/.netlify/functions/update-participant', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...data, id })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            await loadParticipants();
+            showToast('✏️ Partecipante aggiornato');
+            
+            // ✅ CHIEDI SE VUOI INVIARE EMAIL CON DATI AGGIORNATI
+            if (dateChanged || datiImportantiCambiati) {
+                const modifiche = [];
+                if (datiImportantiCambiati) modifiche.push('dati anagrafici');
+                if (dateChanged) modifiche.push('date arrivo/partenza');
+                
+                const conferma = confirm(
+                    `📧 Sono stati modificati: ${modifiche.join(' e ')}\n\n` +
+                    `Vuoi inviare una nuova email a ${data.nome} ${data.cognome} con i dati aggiornati?\n\n` +
+                    `L'email conterrà il QR Code e le nuove informazioni.`
+                );
+                
+                if (conferma) {
+                    // Ricarica il partecipante aggiornato dal server per avere i dati completi
+                    const updatedParticipants = await (await fetch('/.netlify/functions/get-participants')).json();
+                    const updatedParticipant = updatedParticipants.participants.find(p => p.id === id);
+                    
+                    if (updatedParticipant) {
+                        await sendEmail(updatedParticipant, 'registration');
+                        showToast('✅ Email inviata con successo!');
                     }
-                } catch (error) {
-                    showToast('❌ Errore');
                 }
-            };
+            }
+        } else {
+            showToast('❌ Errore aggiornamento');
+        }
+    } catch (error) {
+        console.error('Errore update:', error);
+        showToast('❌ Errore');
+    }
+};
 
             const deleteParticipant = async (id) => {
                 if (!confirm('Eliminare questo partecipante?')) return;
@@ -376,6 +863,26 @@
                 accreditati: participants.filter(p => p.status === 'accreditato').length,
                 checkout: participants.filter(p => p.status === 'checkout').length
             };
+// ✅ DASHBOARD PUBBLICA
+if (view === 'dashboard-public') {
+    return <PublicDashboard />;
+}
+            // ✅ CONTROLLO PRIMO ACCESSO - MOSTRA CAMBIO PASSWORD
+            if (userRole && currentUser && currentUser.primoAccesso) {
+                return <ChangePasswordModal 
+                    user={currentUser} 
+                    onSuccess={() => {
+                        setCurrentUser({...currentUser, primoAccesso: false});
+                        sessionStorage.setItem('currentUser', JSON.stringify({...currentUser, primoAccesso: false}));
+                    }} 
+                    onLogout={() => {
+                        setUserRole(null);
+                        setCurrentUser(null);
+                        sessionStorage.removeItem('currentUser');
+                        setView('home');
+                    }} 
+                />;
+            }
 
             return (
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -384,7 +891,7 @@
                             <img src="/images/banner.jpg" alt="Palasciano Red Cross Camp Napoli" className="w-full h-auto max-h-32 object-contain" />
                         </div>
                     </header>
-                    {!userRole && view === 'home' && <RegistrationForm onSubmit={addParticipant} onAdminClick={() => setView('login')} />}
+                    {!userRole && view === 'home' && <RegistrationForm onSubmit={addParticipant} onAdminClick={() => setView('login')} onDashboardClick={() => setView('dashboard-public')} />}
                     {view === 'login' && !userRole && <LoginForm onLogin={(role, user) => { setUserRole(role); setCurrentUser(user); setView('dash'); }} onBack={() => setView('home')} />}
                     {userRole && (loading ? (
                         <div className="flex items-center justify-center min-h-[50vh]">
@@ -405,58 +912,141 @@
             );
         }// ==================== FORM REGISTRAZIONE ====================
 
-        function RegistrationForm({ onSubmit, onAdminClick }) {
-            const [form, setForm] = useState({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
-            const [success, setSuccess] = useState(false);
-            const regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna', 'Friuli-Venezia Giulia', 'Lazio', 'Liguria', 'Lombardia', 'Marche', 'Molise', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana', 'Trentino-Alto Adige', 'Umbria', "Valle d'Aosta", 'Veneto'];
-            const tipiPartecipazione = ['Corsista', 'Ospite', 'Staff', 'Trainer'];
+        function RegistrationForm({ onSubmit, onAdminClick, onDashboardClick }) {
+    const [form, setForm] = useState({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
+    const [success, setSuccess] = useState(false);
+    const regions = ['Abruzzo', 'Basilicata', 'Calabria', 'Campania', 'Emilia-Romagna', 'Friuli-Venezia Giulia', 'Lazio', 'Liguria', 'Lombardia', 'Marche', 'Molise', 'Piemonte', 'Puglia', 'Sardegna', 'Sicilia', 'Toscana', 'Trentino-Alto Adige', 'Umbria', "Valle d'Aosta", 'Veneto'];
+    const tipiPartecipazione = ['Corsista', 'Ospite', 'Staff', 'Trainer'];
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                await onSubmit(form);
-                setForm({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
-                setSuccess(true);
-                setTimeout(() => setSuccess(false), 5000);
-            };
-
-            return (
-                <div className="max-w-3xl mx-auto px-4 py-8">
-                    <div className="bg-white rounded-lg shadow-xl p-8">
-                        <h2 className="text-2xl font-bold mb-6">Preiscrizione Online</h2>
-                        {success && <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"><p className="font-semibold text-green-900">Completata! Riceverai email con QR Code</p></div>}
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-sm font-medium mb-1">Nome *</label><input required type="text" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                <div><label className="block text-sm font-medium mb-1">Cognome *</label><input required type="text" value={form.cognome} onChange={(e) => setForm({...form, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                            </div>
-                            <div><label className="block text-sm font-medium mb-1">Codice Fiscale *</label><input required type="text" maxLength="16" value={form.cf} onChange={(e) => setForm({...form, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                            <div><label className="block text-sm font-medium mb-1">Tipo Partecipazione *</label><select required value={form.tipoPartecipazione} onChange={(e) => setForm({...form, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona tipo</option>{tipiPartecipazione.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-sm font-medium mb-1">Cellulare *</label><input required type="tel" value={form.tel} onChange={(e) => setForm({...form, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                <div><label className="block text-sm font-medium mb-1">Email *</label><input required type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                            </div>
-                            <div><label className="block text-sm font-medium mb-1">Comitato CRI *</label><input required type="text" value={form.comitato} onChange={(e) => setForm({...form, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                            <div><label className="block text-sm font-medium mb-1">Regione *</label><select required value={form.regione} onChange={(e) => setForm({...form, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona</option>{regions.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-sm font-medium mb-1">Data Arrivo *</label><input required type="date" value={form.arrivo} onChange={(e) => setForm({...form, arrivo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                                <div><label className="block text-sm font-medium mb-1">Data Partenza *</label><input required type="date" value={form.partenza} onChange={(e) => setForm({...form, partenza: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
-                            </div>
-                            <div><label className="block text-sm font-medium mb-1">Modalita Viaggio *</label><select required value={form.viaggio} onChange={(e) => setForm({...form, viaggio: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona</option><option>Mezzo CRI</option><option>Mezzi Pubblici</option><option>Mezzo Privato</option></select></div>
-                            {(form.viaggio === 'Mezzo CRI' || form.viaggio === 'Mezzo Privato') && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                                    <h3 className="font-medium">Info Veicolo</h3>
-                                    <input required type="text" placeholder="Targa" value={form.targa} onChange={(e) => setForm({...form, targa: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" />
-                                    <input required type="text" placeholder="Marca e Modello" value={form.veicolo} onChange={(e) => setForm({...form, veicolo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
-                                </div>
-                            )}
-                            <button type="submit" className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">Completa Preiscrizione</button>
-                            <button type="button" onClick={onAdminClick} className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Area Staff</button>
-                        </form>
-                    </div>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        await onSubmit(form);
+        setForm({ nome: '', cognome: '', cf: '', tel: '', email: '', tipoPartecipazione: '', comitato: '', regione: '', arrivo: '', partenza: '', viaggio: '', targa: '', veicolo: '' });
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 5000);
+    };
+    return (
+        <div className="max-w-3xl mx-auto px-4 py-8">
+            <div className="bg-white rounded-lg shadow-xl p-8">
+                {/* PULSANTI IN ALTO A DESTRA */}
+                <div className="flex justify-end mb-8 gap-3">
+                    <button 
+                        type="button" 
+                        onClick={onAdminClick} 
+                        className="px-5 py-2.5 bg-white border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white font-semibold shadow-md transition-all hover:shadow-lg flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span>Area Staff</span>
+                    </button>
+                    
+                    <button 
+                        type="button" 
+                        onClick={onDashboardClick}
+                        className="px-5 py-2.5 bg-white border-2 border-purple-600 text-purple-600 rounded-lg hover:bg-purple-600 hover:text-white font-semibold shadow-md transition-all hover:shadow-lg flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <span>Dashboard Live</span>
+                    </button>
                 </div>
-            );
-        }
-
+                
+                <h2 className="text-2xl font-bold mb-6">📝 Preiscrizione Online</h2>
+                
+                {success && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setSuccess(false)}>
+                        <div className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl animate-pulse-once" onClick={(e) => e.stopPropagation()}>
+                            <div className="text-center">
+                                <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                                
+                                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                                    🎉 Preiscrizione Completata!
+                                </h2>
+                                
+                                <p className="text-lg text-gray-700 mb-6">
+                                    La tua registrazione è stata confermata con successo.
+                                </p>
+                                
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border-2 border-indigo-200">
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <span className="text-2xl">📧</span>
+                                        <div className="text-left flex-1">
+                                            <p className="font-semibold text-gray-900 mb-1">Email di Conferma</p>
+                                            <p className="text-sm text-gray-700">
+                                                Riceverai a breve un'email con il tuo <strong>QR Code personale</strong> e tutti i dettagli della preiscrizione.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex items-start gap-3">
+                                        <span className="text-2xl">📱</span>
+                                        <div className="text-left flex-1">
+                                            <p className="font-semibold text-gray-900 mb-1">Al Check-in</p>
+                                            <p className="text-sm text-gray-700">
+                                                Presenta il QR Code ricevuto via email per completare l'accreditamento all'evento.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                                    <p className="text-sm text-yellow-800">
+                                        💡 <strong>Suggerimento:</strong> Se non ricevi l'email entro 5 minuti, controlla la cartella spam
+                                    </p>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => setSuccess(false)}
+                                    className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold text-lg transition-all hover:shadow-lg"
+                                >
+                                    ✅ Ho Capito
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium mb-1">Nome *</label><input required type="text" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                        <div><label className="block text-sm font-medium mb-1">Cognome *</label><input required type="text" value={form.cognome} onChange={(e) => setForm({...form, cognome: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    </div>
+                    <div><label className="block text-sm font-medium mb-1">Codice Fiscale *</label><input required type="text" maxLength="16" value={form.cf} onChange={(e) => setForm({...form, cf: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    <div><label className="block text-sm font-medium mb-1">Tipo Partecipazione *</label><select required value={form.tipoPartecipazione} onChange={(e) => setForm({...form, tipoPartecipazione: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona tipo</option>{tipiPartecipazione.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium mb-1">Cellulare *</label><input required type="tel" value={form.tel} onChange={(e) => setForm({...form, tel: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                        <div><label className="block text-sm font-medium mb-1">Email *</label><input required type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    </div>
+                    <div><label className="block text-sm font-medium mb-1">Comitato CRI *</label><input required type="text" value={form.comitato} onChange={(e) => setForm({...form, comitato: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    <div><label className="block text-sm font-medium mb-1">Regione *</label><select required value={form.regione} onChange={(e) => setForm({...form, regione: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona</option>{regions.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium mb-1">Data Arrivo *</label><input required type="date" value={form.arrivo} onChange={(e) => setForm({...form, arrivo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                        <div><label className="block text-sm font-medium mb-1">Data Partenza *</label><input required type="date" value={form.partenza} onChange={(e) => setForm({...form, partenza: e.target.value})} className="w-full px-3 py-2 border rounded-lg" /></div>
+                    </div>
+                    <div><label className="block text-sm font-medium mb-1">Modalità Viaggio *</label><select required value={form.viaggio} onChange={(e) => setForm({...form, viaggio: e.target.value})} className="w-full px-3 py-2 border rounded-lg"><option value="">Seleziona</option><option>Mezzo CRI</option><option>Mezzi Pubblici</option><option>Mezzo Privato</option></select></div>
+                    {(form.viaggio === 'Mezzo CRI' || form.viaggio === 'Mezzo Privato') && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                            <h3 className="font-medium">🚗 Info Veicolo</h3>
+                            <input required type="text" placeholder="Targa" value={form.targa} onChange={(e) => setForm({...form, targa: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border rounded-lg" />
+                            <input required type="text" placeholder="Marca e Modello" value={form.veicolo} onChange={(e) => setForm({...form, veicolo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
+                        </div>
+                    )}
+                    <button type="submit" className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">✅ Completa Preiscrizione</button>
+                </form>
+            </div>
+        </div>
+    );
+}
+   
         // ==================== NUOVO LOGIN FORM CON DATABASE ====================
 
         function LoginForm({ onLogin, onBack }) {
@@ -1620,9 +2210,9 @@
                                                     <div className="text-sm text-gray-600 space-y-1">
                                                         <p>👤 <strong>Username:</strong> {user.username}</p>
                                                         <p>📧 <strong>Email:</strong> {user.email}</p>
-                                                        <p>📅 <strong>Creato:</strong> {new Date(user.data_creazione).toLocaleString('it-IT')}</p>
+                                                        <p>📅 <strong>Creato:</strong> {new Date(user.data_creazione).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}</p>
                                                         {user.data_ultimo_accesso && (
-                                                            <p>🕐 <strong>Ultimo accesso:</strong> {new Date(user.data_ultimo_accesso).toLocaleString('it-IT')}</p>
+                                                            <p>🕐 <strong>Ultimo accesso:</strong> {new Date(user.data_ultimo_accesso).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}</p>
                                                         )}
                                                         {user.note && <p>📝 <strong>Note:</strong> {user.note}</p>}
                                                     </div>

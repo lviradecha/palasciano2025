@@ -1,13 +1,11 @@
-// netlify/functions/manage-users.js
 const { neon } = require('@neondatabase/serverless');
 const bcrypt = require('bcryptjs');
 
-// Funzione per generare password casuale
 function generatePassword(length = 12) {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
     let password = '';
     for (let i = 0; i < length; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
     }
     return password;
 }
@@ -23,31 +21,56 @@ exports.handler = async (event) => {
         return { statusCode: 200, headers, body: '' };
     }
 
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ success: false, error: 'Method not allowed' })
+        };
+    }
+
     try {
-        const sql = neon(process.env.NETLIFY_DATABASE_URL);
-        const { action, adminUserId, ...data } = JSON.parse(event.body);
+        const body = JSON.parse(event.body);
+        const { action, adminUserId } = body;
 
-        // Verifica che chi fa la richiesta sia ADMIN
-        const [admin] = await sql`
-            SELECT * FROM staff_users WHERE id = ${adminUserId} AND ruolo = 'ADMIN' AND attivo = true
-        `;
-
-        if (!admin) {
+        if (!adminUserId) {
             return {
-                statusCode: 403,
+                statusCode: 401,
                 headers,
-                body: JSON.stringify({ success: false, error: 'Accesso negato. Solo ADMIN può gestire utenti.' })
+                body: JSON.stringify({ success: false, error: 'Admin ID mancante' })
             };
         }
 
-        // ==================== LISTA UTENTI ====================
+        const sql = neon(process.env.NETLIFY_DATABASE_URL);
+
+// ✅ IMPOSTA TIMEZONE ITALIANA
+await sql`SET TIME ZONE 'Europe/Rome'`;
+
+// Verifica che l'admin esista
+const adminUser = await sql`SELECT * FROM staff_users WHERE id = ${adminUserId} LIMIT 1`;
+        if (adminUser.length === 0) {
+            return {
+                statusCode: 403,
+                headers,
+                body: JSON.stringify({ success: false, error: 'Utente non autorizzato' })
+            };
+        }
+
+        // ========== LIST ==========
         if (action === 'list') {
+            if (adminUser[0].ruolo !== 'ADMIN') {
+                return {
+                    statusCode: 403,
+                    headers,
+                    body: JSON.stringify({ success: false, error: 'Non autorizzato' })
+                };
+            }
+
             const users = await sql`
-                SELECT 
-                    id, username, nome, cognome, email, ruolo, 
-                    attivo, primo_accesso, data_creazione, data_ultimo_accesso, note
-                FROM staff_users 
-                ORDER BY ruolo, cognome, nome
+                SELECT id, username, nome, cognome, email, ruolo, attivo, primo_accesso, 
+                       data_creazione, data_ultimo_accesso, note
+                FROM staff_users
+                ORDER BY data_creazione DESC
             `;
 
             return {
@@ -57,182 +80,134 @@ exports.handler = async (event) => {
             };
         }
 
-        // ==================== CREA UTENTE ====================
+        // ========== CREATE ==========
         if (action === 'create') {
-            const { username, nome, cognome, email, ruolo, note } = data;
-
-            // Validazioni
-            if (!username || !nome || !cognome || !email || !ruolo) {
+            if (adminUser[0].ruolo !== 'ADMIN') {
                 return {
-                    statusCode: 400,
+                    statusCode: 403,
                     headers,
-                    body: JSON.stringify({ success: false, error: 'Dati mancanti' })
+                    body: JSON.stringify({ success: false, error: 'Non autorizzato' })
                 };
             }
 
-            if (!['ADMIN', 'STAFF_CHECKIN', 'STAFF_ACCREDITAMENTO'].includes(ruolo)) {
-                return {
-                    statusCode: 400,
-                    headers,
-                    body: JSON.stringify({ success: false, error: 'Ruolo non valido' })
-                };
-            }
+            const { username, nome, cognome, email, ruolo, note } = body;
 
-            // Verifica username/email univoci
-            const existing = await sql`
-                SELECT id FROM staff_users 
-                WHERE username = ${username} OR email = ${email}
-            `;
-
+            // Verifica che username non esista già
+            const existing = await sql`SELECT id FROM staff_users WHERE username = ${username} LIMIT 1`;
             if (existing.length > 0) {
                 return {
                     statusCode: 400,
                     headers,
-                    body: JSON.stringify({ success: false, error: 'Username o email già esistenti' })
+                    body: JSON.stringify({ success: false, error: 'Username già esistente' })
                 };
             }
 
             // Genera password casuale
-            const plainPassword = generatePassword();
-            const passwordHash = await bcrypt.hash(plainPassword, 10);
+            const plainPassword = generatePassword(12);
+            const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
             // Crea utente
-            const [newUser] = await sql`
-                INSERT INTO staff_users (
-                    username, password_hash, nome, cognome, email, ruolo, 
-                    attivo, primo_accesso, creato_da, note
-                ) VALUES (
-                    ${username}, ${passwordHash}, ${nome}, ${cognome}, ${email}, ${ruolo},
-                    true, true, ${adminUserId}, ${note || null}
-                )
-                RETURNING id, username, nome, cognome, email, ruolo
+            const newUser = await sql`
+                INSERT INTO staff_users (username, password_hash, nome, cognome, email, ruolo, attivo, primo_accesso, note)
+                VALUES (${username}, ${hashedPassword}, ${nome}, ${cognome}, ${email}, ${ruolo}, true, true, ${note || ''})
+                RETURNING id, username, nome, cognome, email, ruolo, data_creazione
             `;
 
             // Log audit
             await sql`
-                INSERT INTO audit_log (user_id, username, nome_completo, azione, entita, entita_id, dettagli)
+                INSERT INTO audit_log (user_id, username, nome_completo, azione, dettagli, ip_address)
                 VALUES (
-                    ${adminUserId}, ${admin.username}, ${admin.nome} || ' ' || ${admin.cognome},
-                    'CREATE_USER', 'staff_user', ${newUser.id},
-                    ${JSON.stringify({ username: newUser.username, ruolo: newUser.ruolo })}
+                    ${adminUserId},
+                    ${adminUser[0].username},
+                    ${adminUser[0].nome + ' ' + adminUser[0].cognome},
+                    'CREATE_USER',
+                    ${JSON.stringify({ new_user_id: newUser[0].id, username, ruolo })},
+                    ${event.headers['x-forwarded-for'] || 'unknown'}
                 )
             `;
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ 
-                    success: true, 
-                    user: newUser,
-                    credentials: {
-                        username: username,
-                        password: plainPassword
-                    },
-                    message: 'Utente creato con successo'
+                body: JSON.stringify({
+                    success: true,
+                    user: newUser[0],
+                    credentials: { username, password: plainPassword }
                 })
             };
         }
 
-        // ==================== MODIFICA UTENTE ====================
+        // ========== UPDATE ==========
         if (action === 'update') {
-            const { userId, nome, cognome, email, ruolo, attivo, note } = data;
-
-            if (!userId) {
+            if (adminUser[0].ruolo !== 'ADMIN') {
                 return {
-                    statusCode: 400,
+                    statusCode: 403,
                     headers,
-                    body: JSON.stringify({ success: false, error: 'User ID mancante' })
+                    body: JSON.stringify({ success: false, error: 'Non autorizzato' })
                 };
             }
 
+            const { userId, attivo, note } = body;
+
             await sql`
-                UPDATE staff_users SET
-                    nome = ${nome},
-                    cognome = ${cognome},
-                    email = ${email},
-                    ruolo = ${ruolo},
-                    attivo = ${attivo},
-                    note = ${note || null}
+                UPDATE staff_users 
+                SET attivo = ${attivo}, note = ${note || ''}
                 WHERE id = ${userId}
             `;
 
-            // Log audit
             await sql`
-                INSERT INTO audit_log (user_id, username, nome_completo, azione, entita, entita_id, dettagli)
+                INSERT INTO audit_log (user_id, username, nome_completo, azione, dettagli, ip_address)
                 VALUES (
-                    ${adminUserId}, ${admin.username}, ${admin.nome} || ' ' || ${admin.cognome},
-                    'UPDATE_USER', 'staff_user', ${userId},
-                    ${JSON.stringify({ ruolo, attivo })}
+                    ${adminUserId},
+                    ${adminUser[0].username},
+                    ${adminUser[0].nome + ' ' + adminUser[0].cognome},
+                    'UPDATE_USER',
+                    ${JSON.stringify({ updated_user_id: userId, attivo })},
+                    ${event.headers['x-forwarded-for'] || 'unknown'}
                 )
             `;
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ success: true, message: 'Utente aggiornato' })
+                body: JSON.stringify({ success: true })
             };
         }
 
-        // ==================== RESET PASSWORD ====================
-        if (action === 'reset_password') {
-            const { userId } = data;
-
-            const newPassword = generatePassword();
-            const passwordHash = await bcrypt.hash(newPassword, 10);
-
-            await sql`
-                UPDATE staff_users SET
-                    password_hash = ${passwordHash},
-                    primo_accesso = true
-                WHERE id = ${userId}
-            `;
-
-            const [user] = await sql`SELECT username, nome, cognome, email FROM staff_users WHERE id = ${userId}`;
-
-            // Log audit
-            await sql`
-                INSERT INTO audit_log (user_id, username, nome_completo, azione, entita, entita_id)
-                VALUES (
-                    ${adminUserId}, ${admin.username}, ${admin.nome} || ' ' || ${admin.cognome},
-                    'RESET_PASSWORD', 'staff_user', ${userId}
-                )
-            `;
-
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({ 
-                    success: true, 
-                    user: user,
-                    credentials: {
-                        username: user.username,
-                        password: newPassword
-                    }
-                })
-            };
-        }
-
-        // ==================== ELIMINA UTENTE ====================
+        // ========== DELETE ==========
         if (action === 'delete') {
-            const { userId } = data;
+            if (adminUser[0].ruolo !== 'ADMIN') {
+                return {
+                    statusCode: 403,
+                    headers,
+                    body: JSON.stringify({ success: false, error: 'Non autorizzato' })
+                };
+            }
 
-            // Non permettere di eliminare se stesso
+            const { userId } = body;
+
+            // Non permettere di cancellare se stesso
             if (userId === adminUserId) {
                 return {
                     statusCode: 400,
                     headers,
-                    body: JSON.stringify({ success: false, error: 'Non puoi eliminare il tuo account' })
+                    body: JSON.stringify({ success: false, error: 'Non puoi cancellare il tuo account' })
                 };
             }
 
+            // Elimina utente
             await sql`DELETE FROM staff_users WHERE id = ${userId}`;
 
             // Log audit
             await sql`
-                INSERT INTO audit_log (user_id, username, nome_completo, azione, entita, entita_id)
+                INSERT INTO audit_log (user_id, username, nome_completo, azione, dettagli, ip_address)
                 VALUES (
-                    ${adminUserId}, ${admin.username}, ${admin.nome} || ' ' || ${admin.cognome},
-                    'DELETE_USER', 'staff_user', ${userId}
+                    ${adminUserId},
+                    ${adminUser[0].username},
+                    ${adminUser[0].nome + ' ' + adminUser[0].cognome},
+                    'DELETE_USER',
+                    ${JSON.stringify({ deleted_user_id: userId })},
+                    ${event.headers['x-forwarded-for'] || 'unknown'}
                 )
             `;
 
@@ -243,6 +218,59 @@ exports.handler = async (event) => {
             };
         }
 
+        // ========== RESET PASSWORD ==========
+        if (action === 'reset_password') {
+            if (adminUser[0].ruolo !== 'ADMIN') {
+                return {
+                    statusCode: 403,
+                    headers,
+                    body: JSON.stringify({ success: false, error: 'Non autorizzato' })
+                };
+            }
+
+            const { userId } = body;
+
+            const userToReset = await sql`SELECT * FROM staff_users WHERE id = ${userId} LIMIT 1`;
+            if (userToReset.length === 0) {
+                return {
+                    statusCode: 404,
+                    headers,
+                    body: JSON.stringify({ success: false, error: 'Utente non trovato' })
+                };
+            }
+
+            const newPassword = generatePassword(12);
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            await sql`
+                UPDATE staff_users 
+                SET password_hash = ${hashedPassword}, primo_accesso = true
+                WHERE id = ${userId}
+            `;
+
+            await sql`
+                INSERT INTO audit_log (user_id, username, nome_completo, azione, dettagli, ip_address)
+                VALUES (
+                    ${adminUserId},
+                    ${adminUser[0].username},
+                    ${adminUser[0].nome + ' ' + adminUser[0].cognome},
+                    'RESET_PASSWORD',
+                    ${JSON.stringify({ reset_user_id: userId })},
+                    ${event.headers['x-forwarded-for'] || 'unknown'}
+                )
+            `;
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    user: userToReset[0],
+                    credentials: { username: userToReset[0].username, password: newPassword }
+                })
+            };
+        }
+
         return {
             statusCode: 400,
             headers,
@@ -250,7 +278,7 @@ exports.handler = async (event) => {
         };
 
     } catch (error) {
-        console.error('Errore manage-users:', error);
+        console.error('❌ Errore manage-users:', error);
         return {
             statusCode: 500,
             headers,

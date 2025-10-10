@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/dashboard"
+  to = "/?view=dashboard-public"
+  status = 200
+  force = true

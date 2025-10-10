@@ -86,12 +86,11 @@ exports.handler = async (event) => {
             }
             
             // Aggiorna status a checkin
-            await sql`
-                UPDATE partecipanti 
-                SET status = 'checkin',
-                    data_checkin = NOW()
-                WHERE id = ${participant.id}
-            `;
+await sql`
+    UPDATE partecipanti 
+    SET status = 'checkin'
+    WHERE id = ${participant.id}
+`;
 
             // Log audit
             if (staffUser) {

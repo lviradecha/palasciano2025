@@ -104,8 +104,8 @@ exports.handler = async (event) => {
                         ip_address
                     ) VALUES (
                         ${staffUser.id},
-                        ${staffUser.username},
-                        ${staffUser.nome + ' ' + staffUser.cognome},
+                        ${staffUser.username || 'unknown'},
+						${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
                         'CHECKIN_FIRST',
                         ${JSON.stringify({
                             id_partecipante: participant.id,

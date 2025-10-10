@@ -1206,7 +1206,15 @@ if (view === 'dashboard-public') {
                                     const participant = participants.find(p => p.id === data.id);
                                     if (participant) {
                                         if (participant.status === 'preiscritto') {
-                                            const response = await fetch('/.netlify/functions/check-in-scan', {
+                                            console.log('🔍 Dati staff user che sto inviando:', currentUser);
+											console.log('🔍 Oggetto che invio al backend:', {
+											id: currentUser.id,
+											username: currentUser.username,
+											nome: currentUser.nome,
+											cognome: currentUser.cognome
+											});
+											
+											const response = await fetch('/.netlify/functions/check-in-scan', {
                                                 method: 'POST',
                                                 headers: { 'Content-Type': 'application/json' },
                                                 body: JSON.stringify({ 

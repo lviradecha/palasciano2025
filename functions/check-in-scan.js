@@ -86,22 +86,26 @@ exports.handler = async (event) => {
             }
             
             // Aggiorna status a checkin
-await sql`
-    UPDATE partecipanti 
-    SET status = 'checkin'
-    WHERE id = ${participant.id}
-`;
+            await sql`
+                UPDATE partecipanti 
+                SET status = 'checkin'
+                WHERE id = ${participant.id}
+            `;
 
             // Log audit
             if (staffUser) {
                 await sql`
                     INSERT INTO audit_log (
                         user_id, 
+                        username,
+                        nome_completo,
                         azione, 
                         dettagli, 
                         ip_address
                     ) VALUES (
                         ${staffUser.id},
+                        ${staffUser.username},
+                        ${staffUser.nome + ' ' + staffUser.cognome},
                         'CHECKIN_FIRST',
                         ${JSON.stringify({
                             id_partecipante: participant.id,
@@ -145,11 +149,15 @@ await sql`
                     await sql`
                         INSERT INTO audit_log (
                             user_id, 
+                            username,
+                            nome_completo,
                             azione, 
                             dettagli, 
                             ip_address
                         ) VALUES (
                             ${staffUser.id},
+                            ${staffUser.username},
+                            ${staffUser.nome + ' ' + staffUser.cognome},
                             'ACCREDITAMENTO',
                             ${JSON.stringify({
                                 id_partecipante: participant.id,
@@ -191,11 +199,15 @@ await sql`
                     await sql`
                         INSERT INTO audit_log (
                             user_id, 
+                            username,
+                            nome_completo,
                             azione, 
                             dettagli, 
                             ip_address
                         ) VALUES (
                             ${staffUser.id},
+                            ${staffUser.username},
+                            ${staffUser.nome + ' ' + staffUser.cognome},
                             'CHECKIN_DAILY',
                             ${JSON.stringify({
                                 id_partecipante: participant.id,
@@ -247,7 +259,7 @@ await sql`
                 await sql`
                     UPDATE accessi 
                     SET status = 1,
-                        data_checkin = NOW()
+                            data_checkin = NOW()
                     WHERE id = ${accessiOggi[0].id}
                 `;
             }
@@ -257,11 +269,15 @@ await sql`
                 await sql`
                     INSERT INTO audit_log (
                         user_id, 
+                        username,
+                        nome_completo,
                         azione, 
                         dettagli, 
                         ip_address
                     ) VALUES (
                         ${staffUser.id},
+                        ${staffUser.username},
+                        ${staffUser.nome + ' ' + staffUser.cognome},
                         'CHECKIN_DAILY',
                         ${JSON.stringify({
                             id_partecipante: participant.id,

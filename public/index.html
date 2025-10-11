@@ -439,38 +439,38 @@ function PublicDashboard() {
             </div>
 
             {/* STATISTICHE PRINCIPALI */}
-            <div className="grid grid-cols-6 gap-6 mb-6">
-                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-indigo-500">
-                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">👥 Totale</p>
-                    <p className="text-5xl font-bold text-gray-900">{stats.generali.totale}</p>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-blue-500">
-                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">📝 Preiscritti</p>
-                    <p className="text-5xl font-bold text-blue-600">{stats.generali.preiscritti}</p>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-orange-500">
-                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">🚗 Check-in</p>
-                    <p className="text-5xl font-bold text-orange-600">{stats.generali.checkin}</p>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-green-500">
-                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">🎉 Accreditati</p>
-                    <p className="text-5xl font-bold text-green-600">{stats.generali.accreditati}</p>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-purple-500">
-                    <p className="text-gray-500 text-sm font-semibold uppercase mb-2">👋 Check-out</p>
-                    <p className="text-5xl font-bold text-purple-600">{stats.generali.checkout}</p>
-                </div>
+<div className="grid grid-cols-6 gap-6 mb-6">
+    <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-indigo-500">
+        <p className="text-gray-500 text-sm font-semibold uppercase mb-2">👥 Totale</p>
+        <p className="text-5xl font-bold text-gray-900">{stats.generali.totale}</p>
+    </div>
+    
+    <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-blue-500">
+        <p className="text-gray-500 text-sm font-semibold uppercase mb-2">📝 Pre-accreditamento</p>
+        <p className="text-5xl font-bold text-blue-600">{stats.generali.preiscritti}</p>
+    </div>
+    
+    <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-orange-500">
+        <p className="text-gray-500 text-sm font-semibold uppercase mb-2">🚗 Check-in</p>
+        <p className="text-5xl font-bold text-orange-600">{stats.generali.checkin}</p>
+    </div>
+    
+    <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-green-500">
+        <p className="text-gray-500 text-sm font-semibold uppercase mb-2">🎉 Accreditati</p>
+        <p className="text-5xl font-bold text-green-600">{stats.generali.accreditati}</p>
+    </div>
+    
+    <div className="bg-white rounded-xl shadow-xl p-6 border-l-4 border-purple-500">
+        <p className="text-gray-500 text-sm font-semibold uppercase mb-2">👋 Check-out</p>
+        <p className="text-5xl font-bold text-purple-600">{stats.generali.checkout}</p>
+    </div>
 
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-xl p-6">
-                    <p className="text-white text-sm font-semibold uppercase mb-2">✅ Presenti Oggi</p>
-                    <p className="text-5xl font-bold text-white">{stats.presentiOggi}</p>
-                    <p className="text-emerald-100 text-sm mt-1">{percentualePresenza}% del totale</p>
-                </div>
-            </div>
+    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-xl p-6">
+        <p className="text-white text-sm font-semibold uppercase mb-2">✅ Presenti Oggi</p>
+        <p className="text-5xl font-bold text-white">{stats.presentiOggi}</p>
+        <p className="text-emerald-100 text-sm mt-1">{percentualePresenza}% del totale</p>
+    </div>
+</div>
 
             <div className="grid grid-cols-2 gap-6 mb-6">
                 {/* ARRIVI PREVISTI OGGI */}
@@ -939,7 +939,7 @@ if (view === 'dashboard-public') {
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                         </svg>
-                        <span>Area Staff</span>
+                        <span>Area Riservata</span>
                     </button>
                     
                     <button 
@@ -956,7 +956,7 @@ if (view === 'dashboard-public') {
                     </button>
                 </div>
                 
-                <h2 className="text-2xl font-bold mb-6">📝 Preiscrizione Online</h2>
+                <h2 className="text-2xl font-bold mb-6">📝 Pre-accreditamento Online</h2>
                 
                 {success && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setSuccess(false)}>
@@ -969,12 +969,12 @@ if (view === 'dashboard-public') {
                                 </div>
                                 
                                 <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                                    🎉 Preiscrizione Completata!
-                                </h2>
-                                
-                                <p className="text-lg text-gray-700 mb-6">
-                                    La tua registrazione è stata confermata con successo.
-                                </p>
+									🎉 Pre-accreditamento Completato!
+								</h2>
+
+								<p className="text-lg text-gray-700 mb-6">
+									Il tuo pre-accreditamento è stato confermato con successo.
+								</p>
                                 
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border-2 border-indigo-200">
                                     <div className="flex items-start gap-3 mb-4">
@@ -982,7 +982,7 @@ if (view === 'dashboard-public') {
                                         <div className="text-left flex-1">
                                             <p className="font-semibold text-gray-900 mb-1">Email di Conferma</p>
                                             <p className="text-sm text-gray-700">
-                                                Riceverai a breve un'email con il tuo <strong>QR Code personale</strong> e tutti i dettagli della preiscrizione.
+                                                Riceverai a breve un'email con il tuo <strong>QR Code personale</strong> e tutti i dettagli del pre-accreditamento.
                                             </p>
                                         </div>
                                     </div>
@@ -1040,7 +1040,7 @@ if (view === 'dashboard-public') {
                             <input required type="text" placeholder="Marca e Modello" value={form.veicolo} onChange={(e) => setForm({...form, veicolo: e.target.value})} className="w-full px-3 py-2 border rounded-lg" />
                         </div>
                     )}
-                    <button type="submit" className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">✅ Completa Preiscrizione</button>
+                    <button type="submit" className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">✅ Completa Pre-accreditamento</button>
                 </form>
             </div>
         </div>
@@ -1426,7 +1426,7 @@ if (view === 'dashboard-public') {
                     {/* STATISTICHE */}
                     <div className="grid grid-cols-5 gap-6 mb-8">
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Totale</p><p className="text-3xl font-bold">{stats.total}</p></div>
-                        <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Preiscritti</p><p className="text-3xl font-bold text-blue-600">{stats.preiscritti}</p></div>
+                        <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Pre-accreditamento</p><p className="text-3xl font-bold text-blue-600">{stats.preiscritti}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Check-in</p><p className="text-3xl font-bold text-orange-600">{stats.checkin}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Accreditati</p><p className="text-3xl font-bold text-green-600">{stats.accreditati}</p></div>
                         <div className="bg-white rounded-lg shadow p-6"><p className="text-gray-500 text-sm">Check-out</p><p className="text-3xl font-bold text-purple-600">{stats.checkout}</p></div>
@@ -1436,7 +1436,7 @@ if (view === 'dashboard-public') {
                     <div className="bg-white rounded-lg shadow">
                         <div className="flex border-b overflow-x-auto">
                             <button onClick={() => setTab('all')} className={`px-6 py-3 whitespace-nowrap ${tab === 'all' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Tutti ({stats.total})</button>
-                            <button onClick={() => setTab('preiscritto')} className={`px-6 py-3 whitespace-nowrap ${tab === 'preiscritto' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Preiscritti ({stats.preiscritti})</button>
+                            <button onClick={() => setTab('preiscritto')} className={`px-6 py-3 whitespace-nowrap ${tab === 'preiscritto' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Pre-accreditamento ({stats.preiscritti})</button>
                             <button onClick={() => setTab('checkin')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkin' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-in ({stats.checkin})</button>
                             <button onClick={() => setTab('accreditato')} className={`px-6 py-3 whitespace-nowrap ${tab === 'accreditato' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Accreditati ({stats.accreditati})</button>
                             <button onClick={() => setTab('checkout')} className={`px-6 py-3 whitespace-nowrap ${tab === 'checkout' ? 'border-b-2 border-indigo-600 text-indigo-600 font-semibold' : 'text-gray-600'}`}>Check-out ({stats.checkout})</button>

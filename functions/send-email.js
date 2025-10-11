@@ -1,106 +1,118 @@
-// functions/send-email.js
-const formData = require('form-data');
-const Mailgun = require('mailgun.js');
+const FormData = require('form-data');
 const QRCode = require('qrcode');
 
-exports.handler = async (event, context) => {
-  // Solo POST
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
+exports.handler = async (event) => {
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Content-Type': 'application/json'
+    };
 
-  try {
-    // DEBUG: Verifica che le variabili esistano
-    const apiKey = process.env.MAILGUN_API_KEY;
-    const domain = process.env.MAILGUN_DOMAIN;
-    
-    console.log('🔍 DEBUG - API Key presente:', !!apiKey);
-    console.log('🔍 DEBUG - Domain presente:', !!domain);
-    
-    if (!apiKey || !domain) {
-      throw new Error('Variabili d\'ambiente MAILGUN_API_KEY o MAILGUN_DOMAIN mancanti');
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
     }
 
-    // Leggi dati dalla richiesta
-    const { recipient, subject, htmlContent, qrData } = JSON.parse(event.body);
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers,
+            body: JSON.stringify({ success: false, error: 'Method not allowed' })
+        };
+    }
 
-    // Genera QR Code REALE lato server
-    let qrCodeDataUrl = null;
-    if (qrData) {
-      qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
-        width: 300,
-        margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+    try {
+        const { recipient, subject, htmlContent, qrData } = JSON.parse(event.body);
+
+        if (!recipient || !subject || !htmlContent) {
+            return {
+                statusCode: 400,
+                headers,
+                body: JSON.stringify({ success: false, error: 'Dati mancanti' })
+            };
         }
-      });
-      console.log('✅ QR Code generato correttamente');
+
+        const apiKey = process.env.MAILGUN_API_KEY;
+        const domain = process.env.MAILGUN_DOMAIN;
+        const fromEmail = process.env.MAILGUN_FROM_EMAIL || `Palasciano 2025 <noreply@${domain}>`;
+
+        if (!apiKey || !domain) {
+            throw new Error('Configurazione Mailgun mancante');
+        }
+
+        const mailgunUrl = `https://api.eu.mailgun.net/v3/${domain}/messages`;
+
+        // ✅ Genera QR Code come buffer per l'allegato
+        let qrBuffer = null;
+        if (qrData) {
+            qrBuffer = await QRCode.toBuffer(JSON.stringify(qrData), {
+                width: 300,
+                margin: 2,
+                errorCorrectionLevel: 'H',
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            });
+        }
+
+        // ✅ Crea FormData con allegato
+        const form = new FormData();
+        form.append('from', fromEmail);
+        form.append('to', recipient);
+        form.append('subject', subject);
+        form.append('html', htmlContent);
+
+        // ✅ Aggiungi QR Code come allegato se presente
+        if (qrBuffer) {
+            form.append('attachment', qrBuffer, {
+                filename: 'QR-Code-Palasciano2025.png',
+                contentType: 'image/png'
+            });
+        }
+
+        // ✅ Invia email con Mailgun
+        const response = await fetch(mailgunUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + Buffer.from('api:' + apiKey).toString('base64'),
+                ...form.getHeaders()
+            },
+            body: form
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            console.log('✅ Email inviata con successo:', result.id);
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    success: true,
+                    messageId: result.id,
+                    message: 'Email inviata con successo'
+                })
+            };
+        } else {
+            console.error('❌ Errore Mailgun:', result);
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({
+                    success: false,
+                    error: result.message || 'Errore invio email'
+                })
+            };
+        }
+    } catch (error) {
+        console.error('❌ Errore send-email:', error);
+        return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({
+                success: false,
+                error: error.message
+            })
+        };
     }
-
-    // Sostituisci il placeholder nel HTML con il QR Code vero
-    let finalHtml = htmlContent;
-    if (qrCodeDataUrl) {
-      finalHtml = htmlContent.replace(/src="data:image\/png;base64,[^"]*"/, `src="${qrCodeDataUrl}"`);
-    }
-
-    // Inizializza Mailgun con server EU
-    const mailgun = new Mailgun(formData);
-    const mg = mailgun.client({
-      username: 'api',
-      key: apiKey,
-      url: 'https://api.eu.mailgun.net'
-    });
-
-    // Prepara l'email
-    const emailData = {
-      from: `Palasciano 2025 <noreply@${domain}>`,
-      to: recipient,
-      subject: subject,
-      html: finalHtml
-    };
-
-    // Allega QR Code come file
-    if (qrCodeDataUrl) {
-      const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      
-      emailData.attachment = [{
-        data: buffer,
-        filename: 'QRCode_Palasciano2025.png',
-        contentType: 'image/png'
-      }];
-      
-      console.log('✅ QR Code allegato all\'email');
-    }
-
-    // Invia email
-    console.log('📧 Tentativo invio email a:', recipient);
-    const response = await mg.messages.create(domain, emailData);
-
-    console.log('✅ Email inviata con successo:', response.id);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        messageId: response.id,
-        message: 'Email inviata con successo'
-      })
-    };
-
-  } catch (error) {
-    console.error('❌ Errore invio email:', error);
-    console.error('❌ Stack trace:', error.stack);
-    
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        success: false,
-        error: error.message
-      })
-    };
-  }
 };

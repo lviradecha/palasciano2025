@@ -25,9 +25,9 @@ exports.handler = async (event) => {
     try {
         const data = JSON.parse(event.body);
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
-		
-		// ✅ IMPOSTA TIMEZONE ITALIANA
-		await sql`SET TIME ZONE 'Europe/Rome'`;
+
+        // ✅ IMPOSTA TIMEZONE ITALIANA
+        await sql`SET TIME ZONE 'Europe/Rome'`;
 
         console.log('📝 Inizio registrazione per:', data.email);
 
@@ -54,7 +54,7 @@ exports.handler = async (event) => {
         const partenza = new Date(data.partenza);
         
         const accessiPromises = [];
-        for (let d = new Date(arrivo); d <= partenza; d.setDate(d.setDate(d.getDate() + 1))) {
+        for (let d = new Date(arrivo); d <= partenza; d.setDate(d.getDate() + 1)) {
             const dataAccesso = new Date(d).toISOString().split('T')[0];
             accessiPromises.push(
                 sql`INSERT INTO accessi (id_partecipante, data_accesso_richiesto, status) 
@@ -65,42 +65,40 @@ exports.handler = async (event) => {
         await Promise.all(accessiPromises);
         console.log('✅ Accessi creati');
 
-        // 3️⃣ RISPONDE SUBITO ALL'UTENTE - Email verrà inviata in background
-        // Usa setImmediate per non bloccare la risposta
-        setImmediate(async () => {
-            try {
-                console.log('📧 Inizio invio email a:', data.email);
+        // 3️⃣ INVIA EMAIL CON QR CODE
+        try {
+            console.log('📧 Inizio invio email a:', data.email);
 
-                // Genera QR Code
-                const qrCodeDataUrl = await QRCode.toDataURL(
-                    JSON.stringify({ 
-                        id: participantId, 
-                        nome: data.nome, 
-                        cognome: data.cognome, 
-                        cf: data.cf 
-                    }),
-                    { 
-                        errorCorrectionLevel: 'H', 
-                        type: 'image/png', 
-                        width: 300,
-                        margin: 1,
-                        color: {
-                            dark: '#000000',
-                            light: '#FFFFFF'
-                        }
+            // Genera QR Code
+            const qrCodeDataUrl = await QRCode.toDataURL(
+                JSON.stringify({ 
+                    id: participantId, 
+                    nome: data.nome, 
+                    cognome: data.cognome, 
+                    cf: data.cf 
+                }),
+                { 
+                    errorCorrectionLevel: 'H', 
+                    type: 'image/png', 
+                    width: 300,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
                     }
-                );
+                }
+            );
 
-                // Configura Mailgun
-                const mailgun = new Mailgun(formData);
-                const mg = mailgun.client({
-                    username: 'api',
-                    key: process.env.MAILGUN_API_KEY,
-                    url: 'https://api.eu.mailgun.net'
-                });
+            // Configura Mailgun
+            const mailgun = new Mailgun(formData);
+            const mg = mailgun.client({
+                username: 'api',
+                key: process.env.MAILGUN_API_KEY,
+                url: 'https://api.eu.mailgun.net'
+            });
 
-                // Template email
-                const htmlContent = `
+            // Template email
+            const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -141,29 +139,28 @@ exports.handler = async (event) => {
     </div>
 </body>
 </html>
-                `;
+            `;
 
-                // Invia email
-                const emailResult = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-                    from: `Palasciano 2025 <noreply@${process.env.MAILGUN_DOMAIN}>`,
-                    to: [data.email],
-                    subject: '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli',
-                    html: htmlContent
-                });
+            // Invia email
+            const emailResult = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
+                from: `Palasciano 2025 <noreply@${process.env.MAILGUN_DOMAIN}>`,
+                to: [data.email],
+                subject: '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli',
+                html: htmlContent
+            });
 
-                console.log('✅ Email inviata con successo:', emailResult.id);
+            console.log('✅ Email inviata con successo:', emailResult.id);
 
-                // Aggiorna flag email_sent
-                await sql`UPDATE partecipanti SET email_sent = true WHERE id = ${participantId}`;
-                console.log('✅ Flag email_sent aggiornato');
+            // Aggiorna flag email_sent
+            await sql`UPDATE partecipanti SET email_sent = true WHERE id = ${participantId}`;
+            console.log('✅ Flag email_sent aggiornato');
 
-            } catch (emailError) {
-                console.error('❌ Errore invio email (ma partecipante salvato):', emailError);
-                // Non fa fallire la registrazione se l'email fallisce
-            }
-        });
+        } catch (emailError) {
+            console.error('❌ Errore invio email (ma partecipante salvato):', emailError);
+            // Non fa fallire la registrazione se l'email fallisce
+        }
 
-        // ✅ RISPONDE IMMEDIATAMENTE - Email viene inviata in background
+        // ✅ RISPONDE CON SUCCESSO
         return {
             statusCode: 200,
             headers,

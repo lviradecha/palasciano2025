@@ -87,11 +87,11 @@ exports.handler = async (event) => {
             
             // Aggiorna status a checkin
             await sql`
-				UPDATE partecipanti 
-				SET status = 'checkin',
-					accreditamento = 0
-				WHERE id = ${participant.id}
-`			;
+                UPDATE partecipanti 
+                SET status = 'checkin',
+                    accreditamento = 0
+                WHERE id = ${participant.id}
+            `;
 
             // Log audit
             if (staffUser) {
@@ -106,7 +106,7 @@ exports.handler = async (event) => {
                     ) VALUES (
                         ${staffUser.id},
                         ${staffUser.username || 'unknown'},
-						${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
+                        ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
                         'CHECKIN_FIRST',
                         ${JSON.stringify({
                             id_partecipante: participant.id,
@@ -157,8 +157,8 @@ exports.handler = async (event) => {
                             ip_address
                         ) VALUES (
                             ${staffUser.id},
-                            ${staffUser.username},
-                            ${staffUser.nome + ' ' + staffUser.cognome},
+                            ${staffUser.username || 'unknown'},
+                            ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
                             'ACCREDITAMENTO',
                             ${JSON.stringify({
                                 id_partecipante: participant.id,
@@ -207,8 +207,8 @@ exports.handler = async (event) => {
                             ip_address
                         ) VALUES (
                             ${staffUser.id},
-                            ${staffUser.username},
-                            ${staffUser.nome + ' ' + staffUser.cognome},
+                            ${staffUser.username || 'unknown'},
+                            ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
                             'CHECKIN_DAILY',
                             ${JSON.stringify({
                                 id_partecipante: participant.id,
@@ -260,7 +260,7 @@ exports.handler = async (event) => {
                 await sql`
                     UPDATE accessi 
                     SET status = 1,
-                            data_checkin = NOW()
+                        data_checkin = NOW()
                     WHERE id = ${accessiOggi[0].id}
                 `;
             }
@@ -277,8 +277,8 @@ exports.handler = async (event) => {
                         ip_address
                     ) VALUES (
                         ${staffUser.id},
-                        ${staffUser.username},
-                        ${staffUser.nome + ' ' + staffUser.cognome},
+                        ${staffUser.username || 'unknown'},
+                        ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
                         'CHECKIN_DAILY',
                         ${JSON.stringify({
                             id_partecipante: participant.id,

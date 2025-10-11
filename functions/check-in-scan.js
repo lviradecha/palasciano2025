@@ -1,5 +1,4 @@
-const { neon } = require('@neondatabase/serverless');
-
+const { neon } = require('@neondatabase/serverless').default;
 exports.handler = async (event) => {
     const headers = {
         'Access-Control-Allow-Origin': '*',

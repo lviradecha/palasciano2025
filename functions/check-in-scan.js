@@ -71,7 +71,6 @@ exports.handler = async (event) => {
         `;
 
         let action = '';
-        let needsEmail = false;
 
         // === STATUS: 'preiscritto' ===
         if (participant.status === 'preiscritto') {
@@ -131,54 +130,25 @@ exports.handler = async (event) => {
         }
 
         // === STATUS: 'checkin' ===
+        // ✅ SOLO CHECK-IN GIORNALIERO (non accredita più con QR)
         else if (participant.status === 'checkin') {
-            if (participant.accreditamento === 0) {
+            if (accessiOggi.length === 0) {
                 await sql`
-                    UPDATE partecipanti 
-                    SET status = 'accreditato',
-                        accreditamento = 1,
-                        data_accreditamento = NOW()
-                    WHERE id = ${participant.id}
+                    INSERT INTO accessi (
+                        id_partecipante, data_accesso_richiesto, status, data_checkin
+                    ) VALUES (
+                        ${participant.id}, ${oggi}, 1, NOW()
+                    )
                 `;
-                needsEmail = true;
-                action = 'accreditamento';
-
-                if (staffUser) {
-                    await sql`
-                        INSERT INTO audit_log (
-                            user_id, username, nome_completo, azione, dettagli, ip_address
-                        ) VALUES (
-                            ${staffUser.id},
-                            ${staffUser.username || 'unknown'},
-                            ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
-                            'ACCREDITAMENTO',
-                            ${JSON.stringify({
-                                id_partecipante: participant.id,
-                                partecipante_nome: `${participant.nome} ${participant.cognome}`
-                            })},
-                            ${event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown'}
-                        )
-                    `;
-                }
             } else {
-                // Check-in giornaliero
-                if (accessiOggi.length === 0) {
-                    await sql`
-                        INSERT INTO accessi (
-                            id_partecipante, data_accesso_richiesto, status, data_checkin
-                        ) VALUES (
-                            ${participant.id}, ${oggi}, 1, NOW()
-                        )
-                    `;
-                } else {
-                    await sql`
-                        UPDATE accessi 
-                        SET status = 1, data_checkin = NOW()
-                        WHERE id = ${accessiOggi[0].id}
-                    `;
-                }
-                action = 'daily_checkin';
+                await sql`
+                    UPDATE accessi 
+                    SET status = 1, data_checkin = NOW()
+                    WHERE id = ${accessiOggi[0].id}
+                `;
             }
+
+            action = 'daily_checkin';
 
             if (staffUser) {
                 await sql`
@@ -188,7 +158,7 @@ exports.handler = async (event) => {
                         ${staffUser.id},
                         ${staffUser.username || 'unknown'},
                         ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
-                        ${action === 'accreditamento' ? 'ACCREDITAMENTO' : 'CHECKIN_DAILY'},
+                        'CHECKIN_DAILY',
                         ${JSON.stringify({
                             id_partecipante: participant.id,
                             partecipante_nome: `${participant.nome} ${participant.cognome}`,
@@ -206,12 +176,9 @@ exports.handler = async (event) => {
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    message: action === 'accreditamento' ? 'Accreditato con successo!' : 'Check-in giornaliero completato!',
-                    action,
-                    participant: {
-                        ...updated[0],
-                        needsEmail
-                    }
+                    message: 'Check-in giornaliero completato!',
+                    action: action,
+                    participant: updated[0]
                 })
             };
         }

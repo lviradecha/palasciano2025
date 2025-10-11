@@ -7,7 +7,7 @@
     "dev": "netlify dev"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.6",
+    "@neondatabase/serverless": "^0.10.5",
     "bcryptjs": "^2.4.3",
     "dotenv": "^17.2.3",
     "form-data": "^4.0.0",

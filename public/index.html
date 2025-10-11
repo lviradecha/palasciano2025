@@ -1191,10 +1191,11 @@ if (view === 'dashboard-public') {
             const filtered = participants.filter(p => p.nome.toLowerCase().includes(search.toLowerCase()) || p.cognome.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase()));
 
             const startScanner = () => {
-                setShowScanner(true);
-                setTimeout(() => {
-                    const html5QrCode = new Html5Qrcode("qr-reader");
-                    setScannerInstance(html5QrCode);
+    setShowScanner(true);
+    let isProcessing = false; // ⚠️ FLAG per evitare scansioni multiple
+    
+    setTimeout(() => {
+        const html5QrCode = new Html5Qrcode("qr-reader");
                     
                     html5QrCode.start(
                         { facingMode: "environment" },

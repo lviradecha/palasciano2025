@@ -3,3 +3,9 @@
   to = "/?view=dashboard-public"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/dashboard/"
+  to = "/?view=dashboard-public"
+  status = 200
+  force = true

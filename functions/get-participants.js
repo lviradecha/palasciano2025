@@ -7,17 +7,20 @@ exports.handler = async (event) => {
 
     try {
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
-
+        
         const participants = await sql`
             SELECT 
                 p.*,
-                json_agg(
-                    json_build_object(
-                        'id', a.id,
-                        'data', a.data_accesso_richiesto,
-                        'status', a.status,
-                        'dataCheckin', a.data_checkin
-                    ) ORDER BY a.data_accesso_richiesto
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'id', a.id,
+                            'data', a.data_accesso_richiesto,
+                            'status', a.status,
+                            'dataCheckin', a.data_checkin
+                        ) ORDER BY a.data_accesso_richiesto
+                    ) FILTER (WHERE a.id IS NOT NULL),
+                    '[]'::json
                 ) as accessi
             FROM partecipanti p
             LEFT JOIN accessi a ON p.id = a.id_partecipante
@@ -47,7 +50,7 @@ exports.handler = async (event) => {
             dataPreiscrizione: p.data_preiscrizione,
             dataAccreditamento: p.data_accreditamento,
             dataCheckout: p.data_checkout,
-            accessi: p.accessi || []
+            accessi: Array.isArray(p.accessi) ? p.accessi.filter(a => a.id !== null) : []
         }));
 
         return {

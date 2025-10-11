@@ -20,18 +20,18 @@
         // ==================== FUNZIONI DI STAMPA ====================
 
         const printBadgeLabel = (nome, cognome) => {
-            const printWindow = window.open('', '_blank', 'width=400,height=300');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Etichetta - ${nome} ${cognome}</title>
-                    <style>
-                        @page { size: 44mm 12mm; margin: 0; }
-                        @media print { body { margin: 0; padding: 0; } }
-                        body {
-                            width: 44mm; height: 12mm; margin: 0; padding: 0;
+    const printWindow = window.open('', '_blank', 'width=500,height=300');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Etichetta - ${nome} ${cognome}</title>
+            <style>
+                @page { size: 53mm 12mm; margin: 0; }
+                @media print { body { margin: 0; padding: 0; } }
+                body {
+                    width: 53mm; height: 12mm; margin: 0; padding: 0;
                             display: flex; align-items: center; justify-content: center;
                             font-family: Arial, sans-serif; background: white;
                         }

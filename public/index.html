@@ -730,27 +730,40 @@ function PublicDashboard() {
             };
 
             const sendEmail = async (p, type) => {
-                const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
-                const subject = type === 'welcome' ? '🎉 Benvenuto al Palasciano Red Cross Camp Napoli!' : '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli';
-                
-                const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:20px;"><div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;"><div style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:40px 20px;text-align:center;"><h1 style="color:white;margin:0;font-size:28px;">Palasciano Red Cross Camp Napoli</h1><p style="color:#e0e7ff;margin:10px 0 0;">Campo di Formazione CRI 2025</p></div><div style="padding:40px 30px;"><h2 style="color:#1f2937;margin:0 0 20px;">Ciao ${p.nome}!</h2><p style="color:#4b5563;line-height:1.6;margin:0 0 20px;">${type === 'welcome' ? 'Benvenuto al Palasciano Red Cross Camp Napoli! Sei stato accreditato con successo. Ti aspettiamo!' : 'Siamo felici di confermare la tua preiscrizione al Campo di Formazione Palasciano Red Cross Camp Napoli 2025.'}</p>${type !== 'welcome' ? `<div style="text-align:center;margin:30px 0;"><p style="color:#4b5563;margin:0 0 15px;font-weight:600;">Il Tuo QR Code Personale</p><img src="${qr}" alt="QR Code" style="width:250px;height:250px;border:3px solid #4f46e5;border-radius:12px;"/><p style="color:#6b7280;margin:15px 0 0;font-size:13px;">Presenta questo QR Code durante il check-in</p></div>` : ''}<div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;"><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Nome:</strong> ${p.nome} ${p.cognome}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>CF:</strong> ${p.cf}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Tipo:</strong> ${p.tipoPartecipazione || 'Non specificato'}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Comitato:</strong> ${p.comitato}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p><p style="margin:0;color:#6b7280;font-size:14px;"><strong>Periodo:</strong> ${p.arrivo} / ${p.partenza}</p></div><p style="color:#4b5563;margin:20px 0 0;"><strong>Un caro saluto,</strong><br><span style="color:#4f46e5;font-weight:600;">Lo Staff Palasciano Red Cross Camp Napoli</span></p></div><div style="background:#f9fafb;padding:30px 20px;text-align:center;border-top:1px solid #e5e7eb;"><p style="color:#6b7280;margin:0;font-size:14px;">Croce Rossa Italiana</p></div></div></body></html>`;
-
-                try {
-                    const response = await fetch('/.netlify/functions/send-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ recipient: p.email, subject: subject, htmlContent: htmlContent, qrData: { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf } })
-                    });
-
-                    const result = await response.json();
-                    if (result.success) {
-                        const log = { id: Date.now(), timestamp: new Date().toISOString(), recipient: p.email, name: `${p.nome} ${p.cognome}`, subject: subject, qr: qr, messageId: result.messageId };
-                        setEmailLog(prev => [log, ...prev]);
-                    }
-                } catch (error) {
-                    console.error('❌ Errore email:', error);
-                }
+    const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
+    const subject = type === 'welcome' ? '🎉 Benvenuto al Palasciano Red Cross Camp Napoli!' : '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli';
+    
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="font-family:Arial,sans-serif;background:#f3f4f6;padding:20px;"><div style="max-width:600px;margin:0 auto;background:white;border-radius:8px;overflow:hidden;"><div style="background:linear-gradient(135deg,#4f46e5,#6366f1);padding:40px 20px;text-align:center;"><h1 style="color:white;margin:0;font-size:28px;">Palasciano Red Cross Camp Napoli</h1><p style="color:#e0e7ff;margin:10px 0 0;">Campo di Formazione CRI 2025</p></div><div style="padding:40px 30px;"><h2 style="color:#1f2937;margin:0 0 20px;">Ciao ${p.nome}!</h2><p style="color:#4b5563;line-height:1.6;margin:0 0 20px;">${type === 'welcome' ? 'Benvenuto al Palasciano Red Cross Camp Napoli! Sei stato accreditato con successo. Ti aspettiamo!' : 'Siamo felici di confermare la tua preiscrizione al Campo di Formazione Palasciano Red Cross Camp Napoli 2025.'}</p>${type !== 'welcome' ? `<div style="text-align:center;margin:30px 0;"><p style="color:#4b5563;margin:0 0 15px;font-weight:600;">Il Tuo QR Code Personale</p><img src="${qr}" alt="QR Code" style="width:250px;height:250px;border:3px solid #4f46e5;border-radius:12px;"/><p style="color:#6b7280;margin:15px 0 0;font-size:13px;">Presenta questo QR Code durante il check-in</p></div>` : ''}<div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;"><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Nome:</strong> ${p.nome} ${p.cognome}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>CF:</strong> ${p.cf}</p>${p.tipoPartecipazione ? `<p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Tipo:</strong> ${p.tipoPartecipazione}</p>` : ''}<p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Comitato:</strong> ${p.comitato}</p><p style="margin:0 0 10px;color:#6b7280;font-size:14px;"><strong>Regione:</strong> ${p.regione}</p><p style="margin:0;color:#6b7280;font-size:14px;"><strong>Periodo:</strong> ${p.arrivo} / ${p.partenza}</p></div><p style="color:#4b5563;margin:20px 0 0;"><strong>Un caro saluto,</strong><br><span style="color:#4f46e5;font-weight:600;">Lo Staff Palasciano Red Cross Camp Napoli</span></p></div><div style="background:#f9fafb;padding:30px 20px;text-align:center;border-top:1px solid #e5e7eb;"><p style="color:#6b7280;margin:0;font-size:14px;">Croce Rossa Italiana</p></div></div></body></html>`;
+    
+    try {
+        const response = await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                recipient: p.email, 
+                subject: subject, 
+                htmlContent: htmlContent, 
+                qrData: { id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf },
+                emailType: type
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            const log = { 
+                id: Date.now(), 
+                timestamp: new Date().toISOString(), 
+                recipient: p.email, 
+                name: `${p.nome} ${p.cognome}`, 
+                subject: subject, 
+                qr: qr, 
+                messageId: result.messageId 
             };
+            setEmailLog(prev => [log, ...prev]);
+        }
+    } catch (error) {
+        console.error('❌ Errore email:', error);
+    }
+};
 
             const addParticipant = async (data) => {
     try {
@@ -766,7 +779,7 @@ function PublicDashboard() {
         const result = await response.json();
         
         if (result.success) {
-            showToast('✅ Preiscrizione completata! Riceverai l\'email a breve.');
+            showToast('✅ Pre-Accreditamento completata! Riceverai l\'email a breve.');
         } else {
             showToast('❌ ' + (result.error || 'Errore durante la registrazione'));
         }
@@ -1365,26 +1378,92 @@ if (view === 'dashboard-public') {
             };
 
             const onUpdateStatus = async (id, status) => {
-                const qrData = { id };
-                const response = await fetch('/.netlify/functions/check-in-scan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        qrData,
-                        staffUser: currentUser ? {
-                            id: currentUser.id,
-                            username: currentUser.username,
-                            nome: currentUser.nome,
-                            cognome: currentUser.cognome
-                        } : null
-                    })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    if (result.participant.needsEmail) { await onSendEmail(result.participant, 'welcome'); }
-                    await onReload();
-                }
-            };return (
+    try {
+        const participant = participants.find(p => p.id === id);
+        
+        if (!participant) {
+            alert('❌ Partecipante non trovato!');
+            return;
+        }
+
+        let response;
+
+        // ✅ ACCREDITAMENTO MANUALE
+        if (status === 'accreditato') {
+            response = await fetch('/.netlify/functions/accredita-manuale', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    participantId: id,
+                    staffUser: currentUser ? {
+                        id: currentUser.id,
+                        username: currentUser.username,
+                        nome: currentUser.nome,
+                        cognome: currentUser.cognome
+                    } : null
+                })
+            });
+        } 
+        // ✅ CHECK-IN MANUALE
+        else if (status === 'checkin') {
+            const qrData = { id };
+            response = await fetch('/.netlify/functions/check-in-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    qrData,
+                    staffUser: currentUser ? {
+                        id: currentUser.id,
+                        username: currentUser.username,
+                        nome: currentUser.nome,
+                        cognome: currentUser.cognome
+                    } : null
+                })
+            });
+        }
+        // ✅ CHECK-OUT MANUALE
+        else if (status === 'checkout') {
+            const qrData = { id };
+            response = await fetch('/.netlify/functions/checkout-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    qrData,
+                    staffUser: currentUser ? {
+                        id: currentUser.id,
+                        username: currentUser.username,
+                        nome: currentUser.nome,
+                        cognome: currentUser.cognome
+                    } : null
+                })
+            });
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Invia email di benvenuto per accreditamento
+            if (status === 'accreditato' && result.participant && result.participant.needsEmail) {
+                await onSendEmail(result.participant, 'welcome');
+            }
+            
+            await onReload();
+            
+            const messages = {
+                'checkin': `✅ Check-in completato per ${participant.nome} ${participant.cognome}`,
+                'accreditato': `🎉 ${participant.nome} ${participant.cognome} accreditato con successo!`,
+                'checkout': `👋 Check-out completato per ${participant.nome} ${participant.cognome}`
+            };
+            
+            alert(messages[status] || 'Operazione completata!');
+        } else {
+            alert(`❌ Errore: ${result.message || 'Operazione fallita'}`);
+        }
+    } catch (error) {
+        console.error('❌ Errore onUpdateStatus:', error);
+        alert('❌ Errore durante l\'operazione');
+    }
+};return (
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     {/* HEADER CON BADGE RUOLO E PULSANTI ADMIN */}
                     <div className="mb-6 flex items-center justify-between flex-wrap gap-4">

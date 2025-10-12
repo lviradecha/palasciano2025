@@ -141,13 +141,37 @@ exports.handler = async (event) => {
 </html>
             `;
 
-            // Invia email
-            const emailResult = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-                from: `Palasciano 2025 <noreply@${process.env.MAILGUN_DOMAIN}>`,
-                to: [data.email],
-                subject: '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli',
-                html: htmlContent
-            });
+            // Genera QR Code come buffer per allegato
+const qrBuffer = await QRCode.toBuffer(
+    JSON.stringify({ 
+        id: participantId, 
+        nome: data.nome, 
+        cognome: data.cognome, 
+        cf: data.cf 
+    }),
+    { 
+        errorCorrectionLevel: 'H', 
+        width: 300,
+        margin: 2,
+        color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+        }
+    }
+);
+
+// Invia email con allegato
+const emailResult = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
+    from: `Palasciano 2025 <noreply@${process.env.MAILGUN_DOMAIN}>`,
+    to: [data.email],
+    subject: '✅ Conferma Pre-Accreditamento - Palasciano Red Cross Camp Napoli',
+    html: htmlContent,
+    attachment: {
+        data: qrBuffer,
+        filename: 'QR-Code-Palasciano-2025.png',
+        contentType: 'image/png'
+    }
+});
 
             console.log('✅ Email inviata con successo:', emailResult.id);
 

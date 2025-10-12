@@ -4,6 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
+  included_files = ["functions/assets/Guida-Palasciano-2025.pdf"]
 
 [[redirects]]
   from = "/*"
@@ -15,4 +16,3 @@
   to = "/?view=dashboard-public"
   status = 200
   force = true
-  

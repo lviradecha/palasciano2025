@@ -1,11 +1,18 @@
-[[redirects]]
-  from = "/dashboard"
-  to = "/?view=dashboard-public"
-  status = 200
-  force = true
+[build]
+  publish = "public"
+  functions = "functions"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["functions/assets/Guida-Palasciano-2025.pdf"]
 
 [[redirects]]
-  from = "/dashboard/"
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
   to = "/?view=dashboard-public"
   status = 200
   force = true

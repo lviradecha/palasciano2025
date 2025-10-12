@@ -83,42 +83,28 @@ exports.handler = async (event) => {
         }
         
         // Allega PDF SOLO per email di benvenuto
-        if (emailType === 'welcome') {
-            console.log('📄 Email di benvenuto - cerco PDF...');
+if (emailType === 'welcome') {
+    console.log('📄 Email di benvenuto - scarico PDF dal sito...');
+    
+    try {
+        const pdfUrl = 'https://palasciano-2025-again-edition.netlify.app/Guida-Palasciano-2025.pdf';
+        
+        const pdfResponse = await fetch(pdfUrl);
+        if (pdfResponse.ok) {
+            const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
             
-            try {
-                const possiblePaths = [
-                    path.join(__dirname, 'assets', 'Guida-Palasciano-2025.pdf'),
-                    path.join(__dirname, '..', '..', 'public', 'Guida-Palasciano-2025.pdf'),
-                    path.join(__dirname, '..', '..', 'netlify', 'functions', 'assets', 'Guida-Palasciano-2025.pdf'),
-                    path.join(process.cwd(), 'public', 'Guida-Palasciano-2025.pdf')
-                ];
-                
-                let pdfBuffer = null;
-                let foundPath = null;
-                
-                for (const pdfPath of possiblePaths) {
-                    if (fs.existsSync(pdfPath)) {
-                        pdfBuffer = fs.readFileSync(pdfPath);
-                        foundPath = pdfPath;
-                        console.log('✅ PDF trovato in:', foundPath);
-                        break;
-                    }
-                }
-                
-                if (pdfBuffer) {
-                    form.append('attachment', pdfBuffer, {
-                        filename: 'Guida-Palasciano-2025.pdf',
-                        contentType: 'application/pdf'
-                    });
-                    console.log('✅ PDF allegato - Size:', pdfBuffer.length, 'bytes');
-                } else {
-                    console.warn('⚠️ PDF non trovato in nessun percorso');
-                }
-            } catch (pdfError) {
-                console.error('❌ Errore PDF:', pdfError.message);
-            }
+            form.append('attachment', pdfBuffer, {
+                filename: 'Guida-Palasciano-2025.pdf',
+                contentType: 'application/pdf'
+            });
+            console.log('✅ PDF allegato dal sito - Size:', pdfBuffer.length, 'bytes');
+        } else {
+            console.warn('⚠️ PDF non scaricabile, HTTP status:', pdfResponse.status);
         }
+    } catch (pdfError) {
+        console.error('❌ Errore download PDF:', pdfError.message);
+    }
+}
         
         // Invia con fetch
         console.log('📤 Invio email via Mailgun...');

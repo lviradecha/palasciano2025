@@ -1209,92 +1209,136 @@ if (view === 'dashboard-public') {
     
     setTimeout(() => {
         const html5QrCode = new Html5Qrcode("qr-reader");
+        setScannerInstance(html5QrCode);
+        
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            async (decodedText) => {
+                // ✅ BLOCCA se già sta processando
+                if (isProcessing) {
+                    console.log('⏸️ Già sto processando, ignoro...');
+                    return;
+                }
+                
+                try {
+                    // ✅ Valida che non sia vuoto
+                    if (!decodedText || decodedText.trim() === '') {
+                        console.warn('⚠️ QR vuoto, ignoro');
+                        return;
+                    }
                     
-                    html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        async (decodedText) => {
-                            try {
-                                const data = JSON.parse(decodedText);
-                                if (data.id && data.nome && data.cognome) {
-                                    const participant = participants.find(p => p.id === data.id);
-                                    if (participant) {
-                                        if (participant.status === 'preiscritto') {
-                                            console.log('🔍 Dati staff user che sto inviando:', currentUser);
-											console.log('🔍 Oggetto che invio al backend:', {
-											id: currentUser.id,
-											username: currentUser.username,
-											nome: currentUser.nome,
-											cognome: currentUser.cognome
-											});
-											
-											const response = await fetch('/.netlify/functions/check-in-scan', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ 
-                                                    qrData: data,
-                                                    staffUser: currentUser ? {
-                                                        id: currentUser.id,
-                                                        username: currentUser.username,
-                                                        nome: currentUser.nome,
-                                                        cognome: currentUser.cognome
-                                                    } : null
-                                                })
-                                            });
-                                            
-                                            const result = await response.json();
-                                            
-                                            if (result.success) {
-                                                html5QrCode.stop();
-                                                setScannerInstance(null);
-                                                setShowScanner(false);
-                                                
-                                                if (result.action === 'first_checkin') {
-                                                    printBadgeLabel(data.nome, data.cognome);
-                                                }
-                                                
-                                                await onReload();
-                                                alert(`✅ Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}\n\n${result.action === 'first_checkin' ? 'Stampa etichetta in corso...' : ''}`);
-                                            }
-                                        } else if (participant.status === 'checkin') {
-                                            if (confirm(`${data.nome} ${data.cognome} è già in check-in.\n\nVuoi accreditarlo?`)) {
-                                                const response = await fetch('/.netlify/functions/check-in-scan', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ 
-                                                        qrData: data,
-                                                        staffUser: currentUser ? {
-                                                            id: currentUser.id,
-                                                            username: currentUser.username,
-                                                            nome: currentUser.nome,
-                                                            cognome: currentUser.cognome
-                                                        } : null
-                                                    })
-                                                });
-                                                
-                                                const result = await response.json();
-                                                
-                                                if (result.success) {
-                                                    html5QrCode.stop();
-                                                    setScannerInstance(null);
-                                                    setShowScanner(false);
-                                                    await onReload();
-                                                }
-                                            }
-                                        } else {
-                                            alert(`✅ ${data.nome} ${data.cognome}\nè già accreditato!`);
-                                        }
-                                    } else {
-                                        alert('❌ Partecipante non trovato!');
-                                    }
-                                } else {
-                                    alert('❌ QR Code non valido!');
-                                }
-                            } catch (e) {
-    console.error('🔍 Errore parsing QR:', e);
-    console.error('🔍 Testo QR ricevuto:', decodedText);
-    alert('❌ Errore lettura QR!\n\n' + e.message);
-}
+                    const data = JSON.parse(decodedText);
+                    
+                    // ✅ Valida dati completi
+                    if (!data || !data.id || !data.nome || !data.cognome) {
+                        console.warn('⚠️ QR incompleto, ignoro');
+                        return;
+                    }
+                    
+                    // ✅ BLOCCA ulteriori scansioni
+                    isProcessing = true;
+                    
+                    const participant = participants.find(p => p.id === data.id);
+                    
+                    if (!participant) {
+                        isProcessing = false;
+                        alert('❌ Partecipante non trovato!');
+                        return;
+                    }
+                    
+                    if (participant.status === 'preiscritto') {
+                        console.log('🔍 Check-in per:', data.nome, data.cognome);
+                        
+                        const response = await fetch('/.netlify/functions/check-in-scan', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                qrData: data,
+                                staffUser: currentUser ? {
+                                    id: currentUser.id,
+                                    username: currentUser.username,
+                                    nome: currentUser.nome,
+                                    cognome: currentUser.cognome
+                                } : null
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            // ✅ FERMA scanner
+                            await html5QrCode.stop();
+                            setScannerInstance(null);
+                            setShowScanner(false);
+                            
+                            if (result.action === 'first_checkin') {
+                                printBadgeLabel(data.nome, data.cognome);
+                            }
+                            
+                            await onReload();
+                            alert(`✅ Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}\n\n${result.action === 'first_checkin' ? 'Stampa etichetta in corso...' : ''}`);
+                        } else {
+                            isProcessing = false;
+                            alert('❌ Errore check-in: ' + (result.error || 'Errore sconosciuto'));
+                        }
+                        
+                    } else if (participant.status === 'checkin') {
+                        // ✅ SBLOCCA per permettere conferma
+                        isProcessing = false;
+                        
+                        if (confirm(`${data.nome} ${data.cognome} è già in check-in.\n\nVuoi accreditarlo?`)) {
+                            isProcessing = true;
+                            
+                            const response = await fetch('/.netlify/functions/check-in-scan', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    qrData: data,
+                                    staffUser: currentUser ? {
+                                        id: currentUser.id,
+                                        username: currentUser.username,
+                                        nome: currentUser.nome,
+                                        cognome: currentUser.cognome
+                                    } : null
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                await html5QrCode.stop();
+                                setScannerInstance(null);
+                                setShowScanner(false);
+                                await onReload();
+                                alert('✅ Accreditamento completato!');
+                            } else {
+                                isProcessing = false;
+                                alert('❌ Errore accreditamento: ' + (result.error || 'Errore sconosciuto'));
+                            }
+                        }
+                        
+                    } else {
+                        isProcessing = false;
+                        alert(`✅ ${data.nome} ${data.cognome}\nè già accreditato!`);
+                    }
+                    
+                } catch (e) {
+                    isProcessing = false;
+                    console.error('🔍 Errore parsing QR:', e);
+                    console.error('🔍 Testo QR ricevuto:', decodedText);
+                    // ❌ NON mostrare alert per errori di parsing, continua a scansionare
+                }
+            },
+            (errorMessage) => {
+                // Ignora errori continui di scansione
+            }
+        ).catch(err => {
+            alert('❌ Impossibile avviare fotocamera. Verifica i permessi.');
+            setShowScanner(false);
+        });
+    }, 100);
+};
                         },
                         (errorMessage) => {}
                     ).catch(err => {

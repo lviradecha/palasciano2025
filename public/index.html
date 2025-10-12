@@ -1203,7 +1203,7 @@ if (view === 'dashboard-public') {
 
             const filtered = participants.filter(p => p.nome.toLowerCase().includes(search.toLowerCase()) || p.cognome.toLowerCase().includes(search.toLowerCase()) || p.email.toLowerCase().includes(search.toLowerCase()));
 
-            const startScanner = () => {
+const startScanner = () => {
     setShowScanner(true);
     let isProcessing = false; // ⚠️ FLAG per evitare scansioni multiple
     
@@ -1339,17 +1339,6 @@ if (view === 'dashboard-public') {
         });
     }, 100);
 };
-                        },
-                        (errorMessage) => {}
-                    ).catch(err => {
-                        console.error('Errore fotocamera:', err);
-                        setScannerInstance(null);
-                        setShowScanner(false);
-                        alert('❌ Impossibile avviare la fotocamera.\n\nVerifica di aver concesso i permessi al browser per accedere alla fotocamera.');
-                    });
-                }, 100);
-            };
-
             const stopScanner = () => {
                 if (scannerInstance) {
                     scannerInstance.stop().then(() => {

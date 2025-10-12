@@ -82,14 +82,17 @@ exports.handler = async (event) => {
             }
         }
         
-        // Allega PDF SOLO per email di benvenuto
+        // Se è email di benvenuto, allega PDF
 if (emailType === 'welcome') {
-    console.log('📄 Email di benvenuto - scarico PDF dal sito...');
+    console.log('📄 Email di benvenuto - scarico PDF da Google Drive...');
     
     try {
-        const pdfUrl = 'https://palasciano-2025-again-edition.netlify.app/Guida-Palasciano-2025.pdf';
+        const pdfUrl = 'https://drive.google.com/uc?export=download&id=1H1MBWMg19K7CN6i4r4Pz1bIufTeCj3Kd';
         
-        const pdfResponse = await fetch(pdfUrl);
+        const pdfResponse = await fetch(pdfUrl, {
+            redirect: 'follow'  // ✅ Segue i redirect di Google Drive
+        });
+        
         if (pdfResponse.ok) {
             const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
             
@@ -97,7 +100,7 @@ if (emailType === 'welcome') {
                 filename: 'Guida-Palasciano-2025.pdf',
                 contentType: 'application/pdf'
             });
-            console.log('✅ PDF allegato dal sito - Size:', pdfBuffer.length, 'bytes');
+            console.log('✅ PDF allegato da Google Drive - Size:', pdfBuffer.length, 'bytes');
         } else {
             console.warn('⚠️ PDF non scaricabile, HTTP status:', pdfResponse.status);
         }

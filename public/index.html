@@ -1277,7 +1277,7 @@ const startScanner = () => {
                             }
                             
                             await onReload();
-                            alert(`✅ Check-in completato!\n\n${data.nome} ${data.cognome}\nCF: ${data.cf}\n\n${result.action === 'first_checkin' ? 'Stampa etichetta in corso...' : ''}`);
+                            // Nessun alert, solo reload
                         } else {
                             isProcessing = false;
                             alert('❌ Errore check-in: ' + (result.error || 'Errore sconosciuto'));
@@ -1571,7 +1571,7 @@ const startScanner = () => {
                                         const rows = participants.map(p => [
                                             p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, 
                                             p.arrivo || '', p.partenza || '', p.viaggio || '', p.targa || '', p.veicolo || '', p.status,
-                                            p.accreditamento === 1 ? 'Sì' : 'No',
+                                            p.accreditamento === 1 ? 'Si' : 'No',
                                             p.dataPreiscrizione ? new Date(p.dataPreiscrizione).toLocaleString('it-IT') : '',
                                             p.dataAccreditamento ? new Date(p.dataAccreditamento).toLocaleString('it-IT') : '',
                                             p.dataCheckout ? new Date(p.dataCheckout).toLocaleString('it-IT') : ''

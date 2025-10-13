@@ -97,9 +97,11 @@ exports.handler = async (event) => {
 // ✅ FUNZIONE SEPARATA PER INVIO EMAIL ASINCRONO
 async function sendEmailAsync(participantId, data, sql) {
     try {
-        console.log('📧 Inizio invio email a:', data.email);
+        console.log('📧 [EMAIL] Inizio invio email a:', data.email);
+        console.log('📧 [EMAIL] Participant ID:', participantId);
 
         // Genera QR Code
+        console.log('📧 [EMAIL] Generando QR Code...');
         const qrCodeDataUrl = await QRCode.toDataURL(
             JSON.stringify({ 
                 id: participantId, 
@@ -118,8 +120,13 @@ async function sendEmailAsync(participantId, data, sql) {
                 }
             }
         );
+        console.log('📧 [EMAIL] QR Code generato!');
 
         // Configura Mailgun
+        console.log('📧 [EMAIL] Configurando Mailgun...');
+        console.log('📧 [EMAIL] Domain:', process.env.MAILGUN_DOMAIN);
+        console.log('📧 [EMAIL] API Key presente:', !!process.env.MAILGUN_API_KEY);
+        
         const mailgun = new Mailgun(formData);
         const mg = mailgun.client({
             username: 'api',

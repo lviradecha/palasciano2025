@@ -57,7 +57,6 @@ exports.handler = async (event) => {
 
         const oggi = new Date().toISOString().split('T')[0];
 
-        // ✅ AGGIORNA ACCESSO DI OGGI
         const accessiOggi = await sql`
             SELECT * FROM accessi 
             WHERE id_partecipante = ${participant.id} 
@@ -102,10 +101,14 @@ exports.handler = async (event) => {
             `;
         }
 
-        // ✅ Ricarica partecipante con accessi aggiornati
+        // ✅ Ricarica con tutti i campi
         const updated = await sql`
             SELECT 
-                p.*,
+                p.id, p.nome, p.cognome, p.cf, p.tel, p.email,
+                p.tipo_partecipazione, p.comitato, p.regione,
+                p.arrivo, p.partenza, p.viaggio, p.targa, p.veicolo,
+                p.status, p.accreditamento, p.email_sent,
+                p.data_preiscrizione, p.data_accreditamento, p.data_checkout,
                 COALESCE(
                     json_agg(
                         json_build_object(

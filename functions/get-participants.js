@@ -16,10 +16,29 @@ exports.handler = async (event) => {
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
         await sql`SET TIME ZONE 'Europe/Rome'`;
 
-        // ✅ Query ottimizzata con JOIN - una sola chiamata al DB
+        // ✅ Query con TUTTI i campi del partecipante
         const participants = await sql`
             SELECT 
-                p.*,
+                p.id,
+                p.nome,
+                p.cognome,
+                p.cf,
+                p.tel,
+                p.email,
+                p.tipo_partecipazione,
+                p.comitato,
+                p.regione,
+                p.arrivo,
+                p.partenza,
+                p.viaggio,
+                p.targa,
+                p.veicolo,
+                p.status,
+                p.accreditamento,
+                p.email_sent,
+                p.data_preiscrizione,
+                p.data_accreditamento,
+                p.data_checkout,
                 COALESCE(
                     json_agg(
                         json_build_object(

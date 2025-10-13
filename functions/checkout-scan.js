@@ -25,7 +25,6 @@ exports.handler = async (event) => {
         
         await sql`SET TIME ZONE 'Europe/Rome'`;
 
-        // Trova partecipante
         const participants = await sql`
             SELECT * FROM partecipanti 
             WHERE id = ${qrData.id}
@@ -45,7 +44,6 @@ exports.handler = async (event) => {
 
         const participant = participants[0];
 
-        // Controlla che sia accreditato
         if (participant.status !== 'accreditato') {
             return {
                 statusCode: 400,
@@ -59,7 +57,7 @@ exports.handler = async (event) => {
 
         const oggi = new Date().toISOString().split('T')[0];
 
-        // ✅ AGGIORNA ACCESSO DI OGGI (status = 0 per "uscito")
+        // ✅ AGGIORNA ACCESSO DI OGGI
         const accessiOggi = await sql`
             SELECT * FROM accessi 
             WHERE id_partecipante = ${participant.id} 
@@ -74,14 +72,12 @@ exports.handler = async (event) => {
             `;
         }
 
-        // Aggiorna status a checkout
         await sql`
             UPDATE partecipanti 
             SET status = 'checkout', data_checkout = NOW() 
             WHERE id = ${participant.id}
         `;
 
-        // Log audit
         if (staffUser) {
             await sql`
                 INSERT INTO audit_log (
@@ -106,12 +102,34 @@ exports.handler = async (event) => {
             `;
         }
 
+        // ✅ Ricarica partecipante con accessi aggiornati
+        const updated = await sql`
+            SELECT 
+                p.*,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'data', a.data_accesso_richiesto,
+                            'status', a.status,
+                            'dataCheckin', a.data_checkin,
+                            'dataCheckout', a.data_checkout
+                        ) ORDER BY a.data_accesso_richiesto DESC
+                    ) FILTER (WHERE a.id IS NOT NULL),
+                    '[]'::json
+                ) as accessi
+            FROM partecipanti p
+            LEFT JOIN accessi a ON a.id_partecipante = p.id
+            WHERE p.id = ${participant.id}
+            GROUP BY p.id
+        `;
+
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 success: true,
-                message: `👋 Check-out completato per ${participant.nome} ${participant.cognome}`
+                message: `👋 Check-out completato per ${participant.nome} ${participant.cognome}`,
+                participant: updated[0]
             })
         };
 

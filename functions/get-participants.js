@@ -1,67 +1,79 @@
 const { neon } = require('@neondatabase/serverless');
+const zlib = require('zlib');
 
 exports.handler = async (event) => {
-    if (event.httpMethod !== 'GET') {
-        return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Content-Type': 'application/json'
+    };
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
     }
 
     try {
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
-        
+        await sql`SET TIME ZONE 'Europe/Rome'`;
+
+        // ✅ Query ottimizzata con JOIN - una sola chiamata al DB
         const participants = await sql`
             SELECT 
                 p.*,
                 COALESCE(
                     json_agg(
                         json_build_object(
-                            'id', a.id,
                             'data', a.data_accesso_richiesto,
                             'status', a.status,
-                            'dataCheckin', a.data_checkin
-                        ) ORDER BY a.data_accesso_richiesto
+                            'dataCheckin', a.data_checkin,
+                            'dataCheckout', a.data_checkout
+                        ) ORDER BY a.data_accesso_richiesto DESC
                     ) FILTER (WHERE a.id IS NOT NULL),
                     '[]'::json
                 ) as accessi
             FROM partecipanti p
-            LEFT JOIN accessi a ON p.id = a.id_partecipante
+            LEFT JOIN accessi a ON a.id_partecipante = p.id
             GROUP BY p.id
-            ORDER BY p.data_preiscrizione DESC
+            ORDER BY p.cognome, p.nome
         `;
 
-        // Mappa i risultati nel formato del frontend
-        const formatted = participants.map(p => ({
-            id: p.id,
-            nome: p.nome,
-            cognome: p.cognome,
-            cf: p.cf,
-            tel: p.tel,
-            email: p.email,
-            tipoPartecipazione: p.tipo_partecipazione,
-            comitato: p.comitato,
-            regione: p.regione,
-            arrivo: p.arrivo,
-            partenza: p.partenza,
-            viaggio: p.viaggio,
-            targa: p.targa,
-            veicolo: p.veicolo,
-            status: p.status,
-            accreditamento: p.accreditamento,
-            emailSent: p.email_sent,
-            dataPreiscrizione: p.data_preiscrizione,
-            dataAccreditamento: p.data_accreditamento,
-            dataCheckout: p.data_checkout,
-            accessi: Array.isArray(p.accessi) ? p.accessi.filter(a => a.id !== null) : []
-        }));
+        const responseBody = JSON.stringify({
+            success: true,
+            participants: participants,
+            timestamp: new Date().toISOString()
+        });
+
+        // ✅ Comprimi con gzip se il client lo supporta
+        const acceptEncoding = event.headers['accept-encoding'] || '';
+        
+        if (acceptEncoding.includes('gzip')) {
+            const compressed = zlib.gzipSync(responseBody);
+            return {
+                statusCode: 200,
+                headers: {
+                    ...headers,
+                    'Content-Encoding': 'gzip'
+                },
+                body: compressed.toString('base64'),
+                isBase64Encoded: true
+            };
+        }
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ success: true, participants: formatted })
+            headers,
+            body: responseBody
         };
+
     } catch (error) {
-        console.error('Errore get-participants:', error);
+        console.error('❌ Errore get-participants:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ success: false, error: error.message })
+            headers,
+            body: JSON.stringify({
+                success: false,
+                error: error.message
+            })
         };
     }
 };

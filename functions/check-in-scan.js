@@ -20,7 +20,6 @@ exports.handler = async (event) => {
     }
 
     try {
-        // ✅ PARSING SICURO
         let body;
         try {
             body = JSON.parse(event.body);
@@ -33,8 +32,6 @@ exports.handler = async (event) => {
         }
 
         const { qrData, staffUser } = body;
-
-        // ✅ Supporta sia oggetto che stringa semplice
         const id = typeof qrData === 'object' ? qrData?.id : qrData;
 
         if (!id) {
@@ -46,7 +43,6 @@ exports.handler = async (event) => {
         }
 
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
-
         await sql`SET TIME ZONE 'Europe/Rome'`;
 
         const participants = await sql`
@@ -117,21 +113,41 @@ exports.handler = async (event) => {
                 `;
             }
 
+            // ✅ Ricarica partecipante con accessi aggiornati
+            const updated = await sql`
+                SELECT 
+                    p.*,
+                    COALESCE(
+                        json_agg(
+                            json_build_object(
+                                'data', a.data_accesso_richiesto,
+                                'status', a.status,
+                                'dataCheckin', a.data_checkin,
+                                'dataCheckout', a.data_checkout
+                            ) ORDER BY a.data_accesso_richiesto DESC
+                        ) FILTER (WHERE a.id IS NOT NULL),
+                        '[]'::json
+                    ) as accessi
+                FROM partecipanti p
+                LEFT JOIN accessi a ON a.id_partecipante = p.id
+                WHERE p.id = ${participant.id}
+                GROUP BY p.id
+            `;
+
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    message: 'Check-in completato!',
+                    message: '✅ Check-in completato!',
                     action: action,
-                    participant: participant
+                    participant: updated[0]
                 })
             };
         }
 
-        // === STATUS: 'checkin' ===
-        // ✅ SOLO CHECK-IN GIORNALIERO (non accredita più con QR)
-        else if (participant.status === 'checkin') {
+        // === STATUS: 'checkin' o 'accreditato' ===
+        else if (participant.status === 'checkin' || participant.status === 'accreditato') {
             if (accessiOggi.length === 0) {
                 await sql`
                     INSERT INTO accessi (
@@ -169,70 +185,39 @@ exports.handler = async (event) => {
                 `;
             }
 
-            const updated = await sql`SELECT * FROM partecipanti WHERE id = ${participant.id}`;
+            // ✅ Ricarica partecipante con accessi aggiornati
+            const updated = await sql`
+                SELECT 
+                    p.*,
+                    COALESCE(
+                        json_agg(
+                            json_build_object(
+                                'data', a.data_accesso_richiesto,
+                                'status', a.status,
+                                'dataCheckin', a.data_checkin,
+                                'dataCheckout', a.data_checkout
+                            ) ORDER BY a.data_accesso_richiesto DESC
+                        ) FILTER (WHERE a.id IS NOT NULL),
+                        '[]'::json
+                    ) as accessi
+                FROM partecipanti p
+                LEFT JOIN accessi a ON a.id_partecipante = p.id
+                WHERE p.id = ${participant.id}
+                GROUP BY p.id
+            `;
 
             return {
                 statusCode: 200,
                 headers,
                 body: JSON.stringify({
                     success: true,
-                    message: 'Check-in giornaliero completato!',
+                    message: '✅ Check-in giornaliero completato!',
                     action: action,
                     participant: updated[0]
                 })
             };
         }
 
-        // === STATUS: 'accreditato' ===
-        else if (participant.status === 'accreditato') {
-            if (accessiOggi.length === 0) {
-                await sql`
-                    INSERT INTO accessi (
-                        id_partecipante, data_accesso_richiesto, status, data_checkin
-                    ) VALUES (
-                        ${participant.id}, ${oggi}, 1, NOW()
-                    )
-                `;
-            } else {
-                await sql`
-                    UPDATE accessi 
-                    SET status = 1, data_checkin = NOW()
-                    WHERE id = ${accessiOggi[0].id}
-                `;
-            }
-
-            if (staffUser) {
-                await sql`
-                    INSERT INTO audit_log (
-                        user_id, username, nome_completo, azione, dettagli, ip_address
-                    ) VALUES (
-                        ${staffUser.id},
-                        ${staffUser.username || 'unknown'},
-                        ${(staffUser.nome || 'Unknown') + ' ' + (staffUser.cognome || 'User')},
-                        'CHECKIN_DAILY',
-                        ${JSON.stringify({
-                            id_partecipante: participant.id,
-                            partecipante_nome: `${participant.nome} ${participant.cognome}`,
-                            data: oggi
-                        })},
-                        ${event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown'}
-                    )
-                `;
-            }
-
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({
-                    success: true,
-                    message: 'Check-in giornaliero completato!',
-                    action: 'daily_checkin',
-                    participant
-                })
-            };
-        }
-
-        // === STATUS sconosciuto ===
         return {
             statusCode: 400,
             headers,

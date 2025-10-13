@@ -33,7 +33,6 @@ exports.handler = async (event) => {
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
         await sql`SET TIME ZONE 'Europe/Rome'`;
 
-        // Verifica partecipante
         const participants = await sql`
             SELECT * FROM partecipanti WHERE id = ${participantId}
         `;
@@ -48,7 +47,6 @@ exports.handler = async (event) => {
 
         const participant = participants[0];
 
-        // Verifica che sia in stato 'checkin'
         if (participant.status !== 'checkin') {
             return {
                 statusCode: 400,
@@ -70,7 +68,6 @@ exports.handler = async (event) => {
         `;
 
         if (accessiOggi.length === 0) {
-            // Crea accesso di oggi se non esiste
             await sql`
                 INSERT INTO accessi (
                     id_partecipante, 
@@ -85,7 +82,6 @@ exports.handler = async (event) => {
                 )
             `;
         } else {
-            // Assicurati che sia presente
             await sql`
                 UPDATE accessi 
                 SET status = 1, data_checkin = NOW()
@@ -102,7 +98,6 @@ exports.handler = async (event) => {
             WHERE id = ${participantId}
         `;
 
-        // Log audit
         if (staffUser) {
             await sql`
                 INSERT INTO audit_log (
@@ -128,9 +123,25 @@ exports.handler = async (event) => {
             `;
         }
 
-        // Ricarica partecipante aggiornato
+        // ✅ Ricarica partecipante con accessi aggiornati
         const updated = await sql`
-            SELECT * FROM partecipanti WHERE id = ${participantId}
+            SELECT 
+                p.*,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'data', a.data_accesso_richiesto,
+                            'status', a.status,
+                            'dataCheckin', a.data_checkin,
+                            'dataCheckout', a.data_checkout
+                        ) ORDER BY a.data_accesso_richiesto DESC
+                    ) FILTER (WHERE a.id IS NOT NULL),
+                    '[]'::json
+                ) as accessi
+            FROM partecipanti p
+            LEFT JOIN accessi a ON a.id_partecipante = p.id
+            WHERE p.id = ${participantId}
+            GROUP BY p.id
         `;
 
         return {

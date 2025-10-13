@@ -31,7 +31,6 @@ exports.handler = async (event) => {
         }
 
         const sql = neon(process.env.NETLIFY_DATABASE_URL);
-
         await sql`SET TIME ZONE 'Europe/Rome'`;
 
         // Verifica partecipante
@@ -61,6 +60,39 @@ exports.handler = async (event) => {
             };
         }
 
+        const oggi = new Date().toISOString().split('T')[0];
+
+        // ✅ VERIFICA/CREA ACCESSO DI OGGI
+        const accessiOggi = await sql`
+            SELECT * FROM accessi 
+            WHERE id_partecipante = ${participantId} 
+            AND data_accesso_richiesto = ${oggi}
+        `;
+
+        if (accessiOggi.length === 0) {
+            // Crea accesso di oggi se non esiste
+            await sql`
+                INSERT INTO accessi (
+                    id_partecipante, 
+                    data_accesso_richiesto, 
+                    status, 
+                    data_checkin
+                ) VALUES (
+                    ${participantId}, 
+                    ${oggi}, 
+                    1, 
+                    NOW()
+                )
+            `;
+        } else {
+            // Assicurati che sia presente
+            await sql`
+                UPDATE accessi 
+                SET status = 1, data_checkin = NOW()
+                WHERE id = ${accessiOggi[0].id}
+            `;
+        }
+
         // ✅ ACCREDITA
         await sql`
             UPDATE partecipanti 
@@ -88,7 +120,8 @@ exports.handler = async (event) => {
                     ${JSON.stringify({
                         id_partecipante: participantId,
                         partecipante_nome: `${participant.nome} ${participant.cognome}`,
-                        metodo: 'manuale'
+                        metodo: 'manuale',
+                        data: oggi
                     })},
                     ${event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown'}
                 )
@@ -105,7 +138,7 @@ exports.handler = async (event) => {
             headers,
             body: JSON.stringify({ 
                 success: true, 
-                message: 'Accreditamento completato!',
+                message: '🎉 Accreditamento completato!',
                 participant: {
                     ...updated[0],
                     needsEmail: true

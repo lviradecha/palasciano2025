@@ -709,26 +709,53 @@ function PublicDashboard() {
             };
 
             const generateQR = (data) => {
-                const tempDiv = document.createElement('div');
-                tempDiv.style.display = 'none';
-                document.body.appendChild(tempDiv);
-                
-                const qr = new QRCode(tempDiv, {
-                    text: JSON.stringify(data),
-                    width: 300,
-                    height: 300,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-                
-                const canvas = tempDiv.querySelector('canvas');
-                const dataUrl = canvas.toDataURL('image/png');
-                document.body.removeChild(tempDiv);
-                
-                return dataUrl;
-            };
+                try {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.display = 'none';
+                    document.body.appendChild(tempDiv);
 
+                    let rawText = JSON.stringify(data);
+                    const maxLength = 2953; // Limite QR Code con correzione L
+
+                    if (rawText.length > maxLength) {
+                        console.warn('⚠️ Payload troppo grande, ridotto a dati essenziali');
+                        const minimalData = {
+                            id: data.id,
+                            cf: data.cf
+                        };
+                        rawText = JSON.stringify(minimalData);
+                        
+                        if (rawText.length > maxLength) {
+                            console.error('❌ Impossibile generare QR Code, dati troppo grandi');
+                            document.body.removeChild(tempDiv);
+                            return null;
+                        }
+                    }
+
+                    const qr = new QRCode(tempDiv, {
+                        text: rawText,
+                        width: 300,
+                        height: 300,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.L
+                    });
+
+                    const canvas = tempDiv.querySelector('canvas');
+                    const dataUrl = canvas ? canvas.toDataURL('image/png') : null;
+                    
+                    if (!dataUrl) {
+                        console.error('❌ Errore nella generazione del QR Code');
+                    }
+
+                    document.body.removeChild(tempDiv);
+                    return dataUrl;
+                    
+                } catch (error) {
+                    console.error('❌ Errore generazione QR:', error);
+                    return null;
+                }
+            };
             const sendEmail = async (p, type) => {
     const qr = generateQR({ id: p.id, nome: p.nome, cognome: p.cognome, cf: p.cf });
     const subject = type === 'welcome' ? '🎉 Benvenuto al Palasciano Red Cross Camp Napoli!' : '✅ Conferma Preiscrizione - Palasciano Red Cross Camp Napoli';

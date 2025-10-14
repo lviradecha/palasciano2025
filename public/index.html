@@ -585,12 +585,12 @@ function PublicDashboard() {
                             return (
                                 <div key={index}>
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-gray-700 font-medium">{tipo.tipo_partecipazione || 'Non specificato'}</span>
+                                        <span className="text-gray-700 font-medium">{tipo.tipoPartecipazione || 'Non specificato'}</span>
                                         <span className="font-bold">{tipo.totale} ({percentuale}%)</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                         <div 
-                                            className={`bg-gradient-to-r ${colori[tipo.tipo_partecipazione] || 'from-gray-400 to-gray-600'} h-2 rounded-full`}
+                                            className={`bg-gradient-to-r ${colori[tipo.tipoPartecipazione] || 'from-gray-400 to-gray-600'} h-2 rounded-full`}
                                             style={{ width: `${percentuale}%` }}
                                         ></div>
                                     </div>

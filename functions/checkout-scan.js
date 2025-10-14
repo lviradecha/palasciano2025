@@ -105,7 +105,7 @@ exports.handler = async (event) => {
         const updated = await sql`
             SELECT 
                 p.id, p.nome, p.cognome, p.cf, p.tel, p.email,
-                p.tipo_partecipazione, p.comitato, p.regione,
+                p.tipo_Partecipazione, p.comitato, p.regione,
                 p.arrivo, p.partenza, p.viaggio, p.targa, p.veicolo,
                 p.status, p.accreditamento, p.email_sent,
                 p.data_preiscrizione, p.data_accreditamento, p.data_checkout,

@@ -585,12 +585,12 @@ function PublicDashboard() {
                             return (
                                 <div key={index}>
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-gray-700 font-medium">{tipo.tipoPartecipazione || 'Non specificato'}</span>
+                                        <span className="text-gray-700 font-medium">{tipo.tipo_partecipazione || 'Non specificato'}</span>
                                         <span className="font-bold">{tipo.totale} ({percentuale}%)</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                         <div 
-                                            className={`bg-gradient-to-r ${colori[tipo.tipoPartecipazione] || 'from-gray-400 to-gray-600'} h-2 rounded-full`}
+                                            className={`bg-gradient-to-r ${colori[tipo.tipo_partecipazione] || 'from-gray-400 to-gray-600'} h-2 rounded-full`}
                                             style={{ width: `${percentuale}%` }}
                                         ></div>
                                     </div>
@@ -1596,7 +1596,7 @@ const startScanner = () => {
                                     <button onClick={() => {
                                         const headers = ['Nome', 'Cognome', 'CF', 'Email', 'Tel', 'Tipo Partecipazione', 'Comitato', 'Regione', 'Data Arrivo', 'Data Partenza', 'Modalità Viaggio', 'Targa', 'Veicolo', 'Status', 'Accreditamento', 'Data Preiscrizione', 'Data Accreditamento', 'Data Checkout'];
                                         const rows = participants.map(p => [
-                                            p.nome, p.cognome, p.cf, p.email, p.tel, p.tipoPartecipazione || '', p.comitato, p.regione, 
+                                            p.nome, p.cognome, p.cf, p.email, p.tel, p.tipo_partecipazione || '', p.comitato, p.regione, 
                                             p.arrivo || '', p.partenza || '', p.viaggio || '', p.targa || '', p.veicolo || '', p.status,
                                             p.accreditamento === 1 ? 'Si' : 'No',
                                             p.dataPreiscrizione ? new Date(p.dataPreiscrizione).toLocaleString('it-IT') : '',
@@ -1644,7 +1644,7 @@ const startScanner = () => {
                                                         </div>
                                                         <p className="text-sm text-gray-600">{p.email} • {p.tel}</p>
                                                         <p className="text-sm text-gray-600">{p.comitato} - {p.regione}</p>
-                                                        {p.tipoPartecipazione && <p className="text-sm text-gray-600">Tipo: {p.tipoPartecipazione}</p>}
+                                                        <p className="text-sm text-gray-600">Tipo: {p.tipo_partecipazione}</p>
                                                         <p className="text-sm text-gray-600">Periodo: {p.arrivo} / {p.partenza}</p>
                                                         {p.dataCheckout && <p className="text-xs text-gray-500 mt-1">Check-out: {new Date(p.dataCheckout).toLocaleString('it-IT')}</p>}
                                                     </div>
@@ -1698,7 +1698,7 @@ const startScanner = () => {
                                                         </div>
                                                         <p className="text-sm text-gray-600">{p.email} • {p.tel}</p>
                                                         <p className="text-sm text-gray-600">{p.comitato} - {p.regione}</p>
-                                                        {p.tipoPartecipazione && <p className="text-sm text-gray-600">Tipo: {p.tipoPartecipazione}</p>}
+                                                        {p.tipo_partecipazione && <p className="text-sm text-gray-600">Tipo: {p.tipo_partecipazione}</p>}
                                                         <p className="text-sm text-gray-600">Periodo: {p.arrivo} / {p.partenza}</p>
                                                         <p className="text-sm text-gray-600">Viaggio: {p.viaggio}</p>
                                                         {p.targa && p.veicolo && <p className="text-sm text-gray-600">Veicolo: {p.veicolo} - {p.targa}</p>}
@@ -1915,7 +1915,7 @@ const startScanner = () => {
                     id: p.id,
                     nome: p.nome,
                     cognome: p.cognome,
-                    tipo: p.tipoPartecipazione || '-',
+                    tipo: p.tipo_partecipazione || '-',
                     comitato: p.comitato,
                     periodo: `${p.arrivo} / ${p.partenza}`,
                     movimento: 'checkin',
@@ -1929,7 +1929,7 @@ const startScanner = () => {
                     id: `checkout-${p.id}`,
                     nome: p.nome,
                     cognome: p.cognome,
-                    tipo: p.tipoPartecipazione || '-',
+                    tipo: p.tipo_partecipazione || '-',
                     comitato: p.comitato,
                     periodo: `${p.arrivo} / ${p.partenza}`,
                     movimento: 'checkout',

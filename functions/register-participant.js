@@ -82,26 +82,49 @@ exports.handler = async (event) => {
         };
 
     } catch (error) {
-        console.error('❌ Errore registrazione:', error);
+    console.error('❌ Errore registrazione:', error);
+    
+    // ✅ Gestisci errore duplicato CF
+    if (error.code === '23505' && error.constraint === 'partecipanti_cf_key') {
         return {
-            statusCode: 500,
+            statusCode: 400,
             headers,
             body: JSON.stringify({ 
                 success: false, 
-                error: error.message 
+                error: 'Codice Fiscale già registrato. Questa persona è già iscritta all\'evento.' 
             })
         };
     }
+    
+    // ✅ Gestisci errore duplicato EMAIL
+    if (error.code === '23505' && error.constraint === 'partecipanti_email_key') {
+        return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ 
+                success: false, 
+                error: 'Email già registrata. Questa email è già stata utilizzata per un\'iscrizione.' 
+            })
+        };
+    }
+    
+    return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+            success: false, 
+            error: 'Errore durante la registrazione. Riprova o contatta l\'assistenza.' 
+        })
+    };
+}
 };
 
 // ✅ FUNZIONE SEPARATA PER INVIO EMAIL ASINCRONO
 async function sendEmailAsync(participantId, data, sql) {
     try {
-        console.log('📧 [EMAIL] Inizio invio email a:', data.email);
-        console.log('📧 [EMAIL] Participant ID:', participantId);
+        console.log('📧 Inizio invio email a:', data.email);
 
         // Genera QR Code
-        console.log('📧 [EMAIL] Generando QR Code...');
         const qrCodeDataUrl = await QRCode.toDataURL(
             JSON.stringify({ 
                 id: participantId, 
@@ -120,13 +143,8 @@ async function sendEmailAsync(participantId, data, sql) {
                 }
             }
         );
-        console.log('📧 [EMAIL] QR Code generato!');
 
         // Configura Mailgun
-        console.log('📧 [EMAIL] Configurando Mailgun...');
-        console.log('📧 [EMAIL] Domain:', process.env.MAILGUN_DOMAIN);
-        console.log('📧 [EMAIL] API Key presente:', !!process.env.MAILGUN_API_KEY);
-        
         const mailgun = new Mailgun(formData);
         const mg = mailgun.client({
             username: 'api',

@@ -97,7 +97,7 @@ if (emailType === 'welcome') {
             const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
             
             form.append('attachment', pdfBuffer, {
-                filename: 'Guida-Palasciano-2025.pdf',
+                filename: 'Benvenuto e Regolamento del Palasciano Red Cross Camp.pdf',
                 contentType: 'application/pdf'
             });
             console.log('✅ PDF allegato da Google Drive - Size:', pdfBuffer.length, 'bytes');

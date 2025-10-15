@@ -87,7 +87,7 @@ if (emailType === 'welcome') {
     console.log('📄 Email di benvenuto - scarico PDF da Google Drive...');
     
     try {
-        const pdfUrl = 'https://drive.google.com/uc?export=download&id=1H1MBWMg19K7CN6i4r4Pz1bIufTeCj3Kd';
+        const pdfUrl = 'https://drive.google.com/uc?export=download&id=1LLy1tHEY9nqEI3AeCFudYBkxTa6NB4I3';
         
         const pdfResponse = await fetch(pdfUrl, {
             redirect: 'follow'  // ✅ Segue i redirect di Google Drive
